@@ -1,37 +1,80 @@
-# Uniprep Frontend
+# UniPrep - Engineering Study Platform
 
-## 🚀 Setup
+A comprehensive React-based frontend for engineering students to access study materials, practice questions, and AI-powered assistance.
 
-1. Install dependencies
-   ```bash
-   npm install
-   ```
+## 🚀 Features
 
-2. Create a `.env` file
-   ```env
-   VITE_OPENAI_API_KEY=your_api_key_here
-   ```
+- **Modern UI/UX** with Tailwind CSS
+- **Responsive Design** for all devices
+- **Interactive Navigation** with branch and year selection
+- **AI-Powered Learning** assistance
+- **Subject Management** with progress tracking
+- **Past Papers & Videos** integration
 
-3. Run the app
-   ```bash
-   npm run dev
-   ```
+## 📁 Project Structure
 
-## 📂 Pages Flow
+```
+├── frontend/          # React + Vite frontend application
+│   ├── src/          # Source code
+│   ├── public/       # Static assets
+│   └── package.json  # Dependencies
+└── Backend/          # Backend API (if exists)
+```
 
-- `/login` → Login with `user@test.com` / `123456`
-- `/branches` → Select branch (CSE, ECE, MECH)
-- `/branch/:branchId/subjects` → Select subject
-- `/subject/:subjectId` → Subject page with tabs
+## 🛠️ Tech Stack
 
-## 📊 Data
+- **Frontend**: React 18, Vite, Tailwind CSS
+- **Routing**: React Router DOM
+- **Styling**: Tailwind CSS with custom components
+- **Icons**: Heroicons, Emojis
+- **Build Tool**: Vite
 
-- `src/data/questions.js` → Easy / Medium / Hard probable questions
-- `src/data/papers.js` → Past papers list (PDF links from `public/papers/`)
-- `src/data/videos.js` → Reference videos list
+## 🚀 Quick Start
 
-## 🤖 Chatbot
+### Frontend Setup
 
-- Powered by OpenAI API (gpt-3.5-turbo by default)
-- Add your API key in `.env` file
-- One question → one answer (no history)
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The application will be available at `http://localhost:5173`
+
+## 📱 Pages
+
+- **Landing Page**: Welcome and introduction
+- **Login/Signup**: User authentication
+- **Dashboard**: Branch selection with beautiful UI
+- **Year Selection**: Choose academic year
+- **Subject List**: Browse available subjects
+- **Subject Page**: Detailed subject content with AI assistance
+
+## 🎨 Design Features
+
+- **Professional UI** with gradient backgrounds
+- **Smooth Animations** and hover effects
+- **Responsive Grid Layouts**
+- **Interactive Cards** with hover states
+- **Modern Typography** and spacing
+- **Consistent Color Scheme**
+
+## 🔧 Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+## 📄 License
+
+This project is part of the UniPrep engineering study platform.
