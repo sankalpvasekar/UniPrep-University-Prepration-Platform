@@ -1,17 +1,26 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.authtoken.models import Token
+from rest_framework.response import Response
+from rest_framework import status, viewsets
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
-
+from rest_framework.authtoken.models import Token
 from .models import Branch, Subject, Question, Paper, Video, UserProfile
 from .serializers import (
-    BranchSerializer, BranchListSerializer, SubjectSerializer, 
-    SubjectListSerializer, QuestionSerializer, PaperSerializer, 
-    VideoSerializer, RegisterSerializer, UserSerializer, UserProfileSerializer
+    BranchSerializer, BranchListSerializer, SubjectSerializer,
+    QuestionSerializer, PaperSerializer, VideoSerializer,
+    UserProfileSerializer, RegisterSerializer, UserSerializer
 )
+# Import analyzer with error handling
+try:
+    from .uniprep_analyzer import get_analyzer
+    ANALYZER_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: AI Analyzer not available: {e}")
+    ANALYZER_AVAILABLE = False
+    def get_analyzer():
+        return None
 
 
 @api_view(['POST'])
@@ -182,3 +191,125 @@ class VideoViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(subject_id=subject_id)
         
         return queryset
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def dataset_subjects(request):
+    """
+    Get subjects from CSV dataset
+    Query params: branch, year
+    """
+    try:
+        if not ANALYZER_AVAILABLE:
+            return Response({
+                'subjects': [],
+                'source': 'analyzer_not_available'
+            })
+        
+        analyzer = get_analyzer()
+        
+        if not analyzer or not analyzer.is_ready:
+            return Response({
+                'subjects': [],
+                'source': 'dataset_not_ready'
+            })
+        
+        branch = request.query_params.get('branch', None)
+        year = request.query_params.get('year', None)
+        
+        subjects = analyzer.get_subjects_from_csv(branch=branch, year=year)
+        
+        # Format subjects for frontend
+        subjects_data = []
+        for idx, subject_name in enumerate(subjects):
+            subjects_data.append({
+                'id': subject_name.lower().replace(' ', '-'),
+                'name': subject_name,
+                'description': f'Study materials for {subject_name}',
+                'icon': ['🌳', '⚙️', '🗄️', '🧮', '🌐', '🤖', '📚', '🔬', '💡', '🎯'][idx % 10],
+                'color': ['from-blue-500 to-cyan-500', 'from-purple-500 to-pink-500', 
+                         'from-green-500 to-teal-500', 'from-orange-500 to-red-500',
+                         'from-indigo-500 to-purple-500', 'from-pink-500 to-rose-500'][idx % 6]
+            })
+        
+        return Response({
+            'subjects': subjects_data,
+            'source': 'dataset'
+        })
+        
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def ai_questions(request, subject_id):
+    """
+    Get AI-powered prioritized questions for a subject
+    Uses the UniPrep analyzer algorithm
+    """
+    try:
+        if not ANALYZER_AVAILABLE:
+            # Fallback to database
+            try:
+                subject = Subject.objects.get(id=subject_id)
+                questions_db = Question.objects.filter(subject=subject)
+                easy = [{'question': q.text, 'year': 2023, 'topic': 'General', 'marks': q.marks} 
+                       for q in questions_db.filter(difficulty='easy')]
+                medium = [{'question': q.text, 'year': 2023, 'topic': 'General', 'marks': q.marks} 
+                         for q in questions_db.filter(difficulty='medium')]
+                hard = [{'question': q.text, 'year': 2023, 'topic': 'General', 'marks': q.marks} 
+                       for q in questions_db.filter(difficulty='hard')]
+                
+                return Response({
+                    'easy': easy,
+                    'medium': medium,
+                    'hard': hard,
+                    'source': 'database'
+                })
+            except Subject.DoesNotExist:
+                return Response({'error': 'Subject not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        analyzer = get_analyzer()
+        
+        # Try to find subject in dataset by name
+        subject_name = subject_id.replace('-', ' ').title()
+        
+        if not analyzer or not analyzer.is_ready:
+            # Fallback to database
+            try:
+                subject = Subject.objects.get(id=subject_id)
+                questions_db = Question.objects.filter(subject=subject)
+                easy = [{'question': q.text, 'year': 2023, 'topic': 'General', 'marks': q.marks} 
+                       for q in questions_db.filter(difficulty='easy')]
+                medium = [{'question': q.text, 'year': 2023, 'topic': 'General', 'marks': q.marks} 
+                         for q in questions_db.filter(difficulty='medium')]
+                hard = [{'question': q.text, 'year': 2023, 'topic': 'General', 'marks': q.marks} 
+                       for q in questions_db.filter(difficulty='hard')]
+                
+                return Response({
+                    'easy': easy,
+                    'medium': medium,
+                    'hard': hard,
+                    'source': 'database'
+                })
+            except Subject.DoesNotExist:
+                return Response({'error': 'Subject not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Use AI analyzer with dataset
+        categorized_questions = analyzer.analyze_subject(subject_name)
+        
+        return Response({
+            **categorized_questions,
+            'source': 'ai_analyzer'
+        })
+        
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

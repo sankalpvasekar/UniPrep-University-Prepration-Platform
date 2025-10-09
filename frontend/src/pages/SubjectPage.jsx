@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { questions } from "../data/questions";
 import { papers } from "../data/papers";
 import { videos } from "../data/videos";
 import Chatbot from "../components/Chatbot";
@@ -12,6 +11,8 @@ export default function SubjectPage() {
   const [expandedQuestions, setExpandedQuestions] = useState({});
   const [aiAnswers, setAiAnswers] = useState({});
   const [loadingAiAnswers, setLoadingAiAnswers] = useState({});
+  const [questions, setQuestions] = useState({ easy: [], medium: [], hard: [] });
+  const [loadingQuestions, setLoadingQuestions] = useState(true);
   const [studyProgress, setStudyProgress] = useState({
     questions: 0,
     papers: 0,
@@ -19,16 +20,56 @@ export default function SubjectPage() {
     chat: 0
   });
 
-  const subjectInfo = {
-    ds: { name: "Data Structures", icon: "🌳", color: "from-blue-500 to-cyan-500", description: "Master fundamental data structures and algorithms" },
-    os: { name: "Operating Systems", icon: "⚙️", color: "from-purple-500 to-pink-500", description: "Understand system software and resource management" },
-    dbms: { name: "Database Management", icon: "🗄️", color: "from-green-500 to-teal-500", description: "Learn database design and SQL optimization" },
-    algo: { name: "Algorithms", icon: "🧮", color: "from-orange-500 to-red-500", description: "Advanced algorithmic problem solving" },
-    networks: { name: "Computer Networks", icon: "🌐", color: "from-indigo-500 to-purple-500", description: "Network protocols and communication systems" },
-    ai: { name: "Artificial Intelligence", icon: "🤖", color: "from-pink-500 to-rose-500", description: "Machine learning and AI applications" }
-  };
+  const [currentSubject, setCurrentSubject] = useState({
+    name: "Loading...",
+    icon: "📚",
+    color: "from-blue-500 to-cyan-500",
+    description: "Loading subject information..."
+  });
 
-  const currentSubject = subjectInfo[subjectId] || subjectInfo.ds;
+  // Fetch AI-generated questions from backend
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      try {
+        setLoadingQuestions(true);
+        const response = await fetch(`http://localhost:8000/api/ai-questions/${subjectId}/`);
+        const data = await response.json();
+        
+        if (data.error) {
+          console.error('Error fetching questions:', data.error);
+          // Set empty questions on error
+          setQuestions({ easy: [], medium: [], hard: [] });
+        } else {
+          setQuestions({
+            easy: data.easy || [],
+            medium: data.medium || [],
+            hard: data.hard || []
+          });
+          
+          // Update subject info based on fetched data
+          if (data.easy.length > 0 || data.medium.length > 0 || data.hard.length > 0) {
+            const subjectName = subjectId.split('-').map(word => 
+              word.charAt(0).toUpperCase() + word.slice(1)
+            ).join(' ');
+            
+            setCurrentSubject({
+              name: subjectName,
+              icon: "📚",
+              color: "from-blue-500 to-cyan-500",
+              description: `AI-powered study materials for ${subjectName}`
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch questions:', error);
+        setQuestions({ easy: [], medium: [], hard: [] });
+      } finally {
+        setLoadingQuestions(false);
+      }
+    };
+
+    fetchQuestions();
+  }, [subjectId]);
 
   const tabs = [
     { id: "questions", name: "Questions", icon: "❓", count: questions.easy.length + questions.medium.length + questions.hard.length },
@@ -171,7 +212,7 @@ export default function SubjectPage() {
         {activeTab === "questions" && (
             <div className="p-8">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Practice Questions</h2>
+                <h2 className="text-2xl font-bold text-gray-900">AI-Prioritized Questions</h2>
                 <button
                   onClick={() => markAsStudied('questions')}
                   className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
@@ -180,6 +221,25 @@ export default function SubjectPage() {
                 </button>
               </div>
 
+              {loadingQuestions ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="text-center">
+                    <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-600">Analyzing questions with AI algorithm...</p>
+                    <p className="text-sm text-gray-500 mt-2">This may take a few moments</p>
+                  </div>
+                </div>
+              ) : questions.easy.length === 0 && questions.medium.length === 0 && questions.hard.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                    <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-medium text-gray-900 mb-2">No questions available</h3>
+                  <p className="text-gray-500">Questions for this subject are not available in the dataset</p>
+                </div>
+              ) : (
               <div className="space-y-8">
                 {Object.entries(questions).map(([difficulty, questionList]) => (
                   <div key={difficulty} className="space-y-4">
@@ -298,6 +358,7 @@ export default function SubjectPage() {
                   </div>
                 ))}
               </div>
+              )}
           </div>
         )}
 

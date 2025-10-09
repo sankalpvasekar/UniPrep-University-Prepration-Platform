@@ -74,6 +74,13 @@ DATABASES = {
     }
 }
 
+# MongoDB connection (used alongside Django ORM)
+MONGODB_SETTINGS = {
+    'host': 'localhost',
+    'port': 27017,
+    'db_name': 'uniprep_db'
+}
+
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -131,9 +138,12 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False
 
 # CSRF settings
 CSRF_TRUSTED_ORIGINS = [

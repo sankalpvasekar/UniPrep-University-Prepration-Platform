@@ -41,6 +41,15 @@ export default function YearSelectionPage() {
 
   const years = [
     {
+      id: "fy",
+      name: "First Year",
+      description: "Basic sciences and engineering fundamentals",
+      icon: "📖",
+      color: "from-orange-500 to-red-500",
+      subjects: 6,
+      difficulty: "Beginner"
+    },
+    {
       id: "second",
       name: "Second Year",
       description: "Foundation subjects and core concepts",
@@ -137,7 +146,7 @@ export default function YearSelectionPage() {
           <p className="text-gray-600 text-center">Select your year to access relevant subjects and materials</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
           {years.map((year) => (
             <Link
               key={year.id}

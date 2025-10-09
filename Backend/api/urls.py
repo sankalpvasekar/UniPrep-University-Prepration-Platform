@@ -17,6 +17,10 @@ urlpatterns = [
     path('auth/logout/', views.logout, name='logout'),
     path('auth/user/', views.current_user, name='current_user'),
     
+    # Dataset endpoints
+    path('dataset/subjects/', views.dataset_subjects, name='dataset_subjects'),
+    path('ai-questions/<str:subject_id>/', views.ai_questions, name='ai_questions'),
+    
     # Chatbot endpoint
     path('chat/', chat_with_ai, name='chat'),
     

@@ -21,11 +21,16 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
     confirm_password = serializers.CharField(write_only=True)
-    branch = serializers.CharField(required=False, allow_blank=True)
+    email = serializers.EmailField(required=True)
     
     class Meta:
         model = User
-        fields = ['email', 'password', 'confirm_password', 'first_name', 'last_name', 'branch']
+        fields = ['email', 'password', 'confirm_password', 'first_name', 'last_name']
+    
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
     
     def validate(self, data):
         if data['password'] != data['confirm_password']:
@@ -34,7 +39,6 @@ class RegisterSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         validated_data.pop('confirm_password')
-        branch_id = validated_data.pop('branch', None)
         
         user = User.objects.create_user(
             username=validated_data['email'],
@@ -44,15 +48,8 @@ class RegisterSerializer(serializers.ModelSerializer):
             password=validated_data['password']
         )
         
-        # Create user profile
-        branch = None
-        if branch_id:
-            try:
-                branch = Branch.objects.get(id=branch_id)
-            except Branch.DoesNotExist:
-                pass
-        
-        UserProfile.objects.create(user=user, branch=branch)
+        # Create user profile without branch
+        UserProfile.objects.create(user=user, branch=None)
         
         return user
 

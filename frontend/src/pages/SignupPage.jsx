@@ -7,8 +7,7 @@ export default function SignupPage() {
     lastName: "",
     email: "",
     password: "",
-    confirmPassword: "",
-    branch: ""
+    confirmPassword: ""
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -18,12 +17,6 @@ export default function SignupPage() {
 
   const navigate = useNavigate();
 
-  const branches = [
-    { id: "cse", name: "Computer Science Engineering" },
-    { id: "ece", name: "Electronics & Communication Engineering" },
-    { id: "mech", name: "Mechanical Engineering" },
-    { id: "civil", name: "Civil Engineering" }
-  ];
 
   const handleChange = (e) => {
     setFormData({
@@ -50,12 +43,37 @@ export default function SignupPage() {
       return;
     }
 
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      const response = await fetch('http://localhost:8000/api/auth/register/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          confirm_password: formData.confirmPassword,
+          first_name: formData.firstName,
+          last_name: formData.lastName
+        })
+      });
 
-    // For demo purposes, always succeed
-    navigate("/dashboard");
-    setIsLoading(false);
+      const data = await response.json();
+
+      if (response.ok) {
+        // Store token and user data
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        navigate("/dashboard");
+      } else {
+        setError(data.error || Object.values(data).flat().join(', ') || 'Registration failed');
+      }
+    } catch (error) {
+      setError('Unable to connect to server. Please try again.');
+      console.error('Registration error:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -150,31 +168,6 @@ export default function SignupPage() {
                   required
                 />
               </div>
-            </div>
-
-            {/* Branch Selection */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Engineering Branch</label>
-              <select
-                name="branch"
-                value={formData.branch}
-                onChange={handleChange}
-                onFocus={() => setFocusedField('branch')}
-                onBlur={() => setFocusedField('')}
-                className={`w-full px-4 py-3 border-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-0 ${
-                  focusedField === 'branch' 
-                    ? 'border-blue-500 bg-blue-50' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                required
-              >
-                <option value="">Select your branch</option>
-                {branches.map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </option>
-                ))}
-              </select>
             </div>
 
             {/* Password Field */}

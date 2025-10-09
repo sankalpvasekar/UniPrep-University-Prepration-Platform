@@ -15,15 +15,31 @@ export default function LoginPage() {
     setIsLoading(true);
     setError("");
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (email === "user@test.com" && password === "123456") {
-      navigate("/dashboard");
-    } else {
-      setError("Invalid credentials. Use user@test.com / 123456");
+    try {
+      const response = await fetch('http://localhost:8000/api/auth/login/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Store token and user data
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        navigate("/dashboard");
+      } else {
+        setError(data.error || 'Invalid credentials');
+      }
+    } catch (error) {
+      setError('Unable to connect to server. Please try again.');
+      console.error('Login error:', error);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleDemoLogin = () => {

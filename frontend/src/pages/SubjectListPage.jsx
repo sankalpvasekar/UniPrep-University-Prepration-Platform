@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 
 export default function SubjectListPage() {
@@ -7,6 +7,8 @@ export default function SubjectListPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("name");
   const [filterBy, setFilterBy] = useState("all");
+  const [subjects, setSubjects] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const branchData = {
     cse: { name: "Computer Science Engineering", icon: "💻", color: "from-blue-500 to-cyan-500" },
@@ -20,79 +22,178 @@ export default function SubjectListPage() {
     second: { name: "Second Year", icon: "📚" },
     third: { name: "Third Year", icon: "🎓" },
     final: { name: "Final Year", icon: "🚀" },
+    fy: { name: "First Year", icon: "📖" },
+    sy: { name: "Second Year", icon: "📚" },
+    ty: { name: "Third Year", icon: "🎓" },
   };
 
   const currentBranch = branchData[branchId] || branchData.cse;
   const currentYear = yearData[yearId] || yearData.second;
 
-  const subjects = [
-    { 
-      id: "ds", 
-      name: "Data Structures", 
-      description: "Arrays, Linked Lists, Trees, Graphs, and Algorithms",
-      difficulty: "medium",
-      credits: 4,
-      icon: "🌳",
-      color: "from-blue-500 to-cyan-500",
-      progress: 75,
-      lastAccessed: "2 days ago"
-    },
-    { 
-      id: "os", 
-      name: "Operating Systems", 
-      description: "Process Management, Memory Management, File Systems",
-      difficulty: "hard",
-      credits: 3,
-      icon: "⚙️",
-      color: "from-purple-500 to-pink-500",
-      progress: 60,
-      lastAccessed: "1 week ago"
-    },
-    { 
-      id: "dbms", 
-      name: "Database Management", 
-      description: "SQL, Normalization, Transactions, and Query Optimization",
-      difficulty: "medium",
-      credits: 3,
-      icon: "🗄️",
-      color: "from-green-500 to-teal-500",
-      progress: 90,
-      lastAccessed: "3 days ago"
-    },
-    { 
-      id: "algo", 
-      name: "Algorithms", 
-      description: "Sorting, Searching, Dynamic Programming, Greedy Algorithms",
-      difficulty: "hard",
-      credits: 4,
-      icon: "🧮",
-      color: "from-orange-500 to-red-500",
-      progress: 45,
-      lastAccessed: "5 days ago"
-    },
-    { 
-      id: "networks", 
-      name: "Computer Networks", 
-      description: "TCP/IP, Routing, Security, and Network Protocols",
-      difficulty: "medium",
-      credits: 3,
-      icon: "🌐",
-      color: "from-indigo-500 to-purple-500",
-      progress: 30,
-      lastAccessed: "1 week ago"
-    },
-    { 
-      id: "ai", 
-      name: "Artificial Intelligence", 
-      description: "Machine Learning, Neural Networks, and AI Applications",
-      difficulty: "hard",
-      credits: 4,
-      icon: "🤖",
-      color: "from-pink-500 to-rose-500",
-      progress: 20,
-      lastAccessed: "2 weeks ago"
-    },
-  ];
+  // Fetch 5 subjects from dataset
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      try {
+        const branchMap = {
+          'cse': 'CSE',
+          'ece': 'ECE',
+          'mech': 'MECH',
+          'civil': 'CIVIL',
+          'electrical': 'EE'
+        };
+        
+        const yearMap = {
+          'second': 'SY',
+          'third': 'TY',
+          'final': 'Final Year',
+          'fy': 'FY',
+          'sy': 'SY',
+          'ty': 'TY'
+        };
+
+        const branch = branchMap[branchId] || 'CSE';
+        const year = yearMap[yearId] || 'FY';
+
+        const response = await fetch(`http://localhost:8000/api/dataset/subjects/?branch=${branch}&year=${year}`);
+        const data = await response.json();
+
+        if (data.subjects && data.subjects.length > 0) {
+          // Limit to 5 subjects and add additional properties for UI
+          const enrichedSubjects = data.subjects.slice(0, 5).map((subject, idx) => ({
+            ...subject,
+            difficulty: ['easy', 'medium', 'hard'][idx % 3],
+            credits: [3, 4, 3, 4, 3][idx % 5],
+            progress: [75, 60, 85, 45, 50][idx % 5],
+            lastAccessed: ['2 days ago', '1 week ago', '3 days ago', 'Recently', '5 days ago'][idx % 5]
+          }));
+          setSubjects(enrichedSubjects);
+        } else {
+          // Fallback to hardcoded subjects if dataset is empty
+          setSubjects([
+            { 
+              id: "ds", 
+              name: "Data Structures", 
+              description: "Arrays, Linked Lists, Trees, Graphs, and Algorithms",
+              difficulty: "medium",
+              credits: 4,
+              icon: "🌳",
+              color: "from-blue-500 to-cyan-500",
+              progress: 75,
+              lastAccessed: "2 days ago"
+            },
+            { 
+              id: "os", 
+              name: "Operating Systems", 
+              description: "Process Management, Memory Management, File Systems",
+              difficulty: "hard",
+              credits: 3,
+              icon: "⚙️",
+              color: "from-purple-500 to-pink-500",
+              progress: 60,
+              lastAccessed: "1 week ago"
+            },
+            { 
+              id: "dbms", 
+              name: "Database Management Systems", 
+              description: "SQL, Normalization, Transactions, Query Optimization",
+              difficulty: "medium",
+              credits: 4,
+              icon: "🗄️",
+              color: "from-green-500 to-teal-500",
+              progress: 85,
+              lastAccessed: "3 days ago"
+            },
+            { 
+              id: "cn", 
+              name: "Computer Networks", 
+              description: "OSI Model, TCP/IP, Routing, Network Security",
+              difficulty: "medium",
+              credits: 3,
+              icon: "🌐",
+              color: "from-orange-500 to-red-500",
+              progress: 45,
+              lastAccessed: "Recently"
+            },
+            { 
+              id: "algo", 
+              name: "Algorithm Design", 
+              description: "Sorting, Searching, Dynamic Programming, Greedy Algorithms",
+              difficulty: "hard",
+              credits: 4,
+              icon: "🧮",
+              color: "from-pink-500 to-purple-500",
+              progress: 50,
+              lastAccessed: "1 week ago"
+            }
+          ]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch subjects:', error);
+        // Fallback subjects on error
+        setSubjects([
+          { 
+            id: "ds", 
+            name: "Data Structures", 
+            description: "Arrays, Linked Lists, Trees, Graphs, and Algorithms",
+            difficulty: "medium",
+            credits: 4,
+            icon: "🌳",
+            color: "from-blue-500 to-cyan-500",
+            progress: 75,
+            lastAccessed: "2 days ago"
+          },
+          { 
+            id: "os", 
+            name: "Operating Systems", 
+            description: "Process Management, Memory Management, File Systems",
+            difficulty: "hard",
+            credits: 3,
+            icon: "⚙️",
+            color: "from-purple-500 to-pink-500",
+            progress: 60,
+            lastAccessed: "1 week ago"
+          },
+          { 
+            id: "dbms", 
+            name: "Database Management Systems", 
+            description: "SQL, Normalization, Transactions, Query Optimization",
+            difficulty: "medium",
+            credits: 4,
+            icon: "🗄️",
+            color: "from-green-500 to-teal-500",
+            progress: 85,
+            lastAccessed: "3 days ago"
+          },
+          { 
+            id: "cn", 
+            name: "Computer Networks", 
+            description: "OSI Model, TCP/IP, Routing, Network Security",
+            difficulty: "medium",
+            credits: 3,
+            icon: "🌐",
+            color: "from-orange-500 to-red-500",
+            progress: 45,
+            lastAccessed: "Recently"
+          },
+          { 
+            id: "algo", 
+            name: "Algorithm Design", 
+            description: "Sorting, Searching, Dynamic Programming, Greedy Algorithms",
+            difficulty: "hard",
+            credits: 4,
+            icon: "🧮",
+            color: "from-pink-500 to-purple-500",
+            progress: 50,
+            lastAccessed: "1 week ago"
+          }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSubjects();
+  }, [branchId, yearId]);
 
   const filteredAndSortedSubjects = useMemo(() => {
     let filtered = subjects.filter(subject => {
@@ -258,15 +359,25 @@ export default function SubjectListPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Results Count */}
-        <div className="mb-6">
-          <p className="text-gray-600">
-            Showing {filteredAndSortedSubjects.length} of {subjects.length} subjects
-          </p>
-        </div>
+        {/* Loading State */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading subjects from dataset...</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Results Count */}
+            <div className="mb-6">
+              <p className="text-gray-600">
+                Showing {filteredAndSortedSubjects.length} of {subjects.length} subjects
+              </p>
+            </div>
 
-        {/* Subjects Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Subjects Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredAndSortedSubjects.map((subject) => (
             <Link
               key={subject.id}
@@ -343,17 +454,19 @@ export default function SubjectListPage() {
           ))}
         </div>
 
-        {/* Empty State */}
-        {filteredAndSortedSubjects.length === 0 && (
-          <div className="text-center py-12">
-            <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-              <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-medium text-gray-900 mb-2">No subjects found</h3>
-            <p className="text-gray-500">Try adjusting your search or filter criteria</p>
-          </div>
+            {/* Empty State */}
+            {filteredAndSortedSubjects.length === 0 && (
+              <div className="text-center py-12">
+                <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                  <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-medium text-gray-900 mb-2">No subjects found</h3>
+                <p className="text-gray-500">Try adjusting your search or filter criteria</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
