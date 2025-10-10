@@ -4,39 +4,39 @@ import { Link, useNavigate } from "react-router-dom";
 export default function BranchPage() {
   const [hoveredCard, setHoveredCard] = useState(null);
   const navigate = useNavigate();
-  
+
   const branches = [
-    { 
-      id: "cse", 
-      name: "Computer Science Engineering", 
+    {
+      id: "cse",
+      name: "Computer Science Engineering",
       description: "Algorithms, Data Structures, Software Engineering",
       icon: "💻",
       color: "from-blue-500 to-cyan-500",
-      stats: { subjects: 8, students: 1200 }
+      stats: { subjects: 5 }
     },
-    { 
-      id: "ece", 
-      name: "Electronics and Telecommunication Engineering", 
+    {
+      id: "ece",
+      name: "Electronics and Telecommunication Engineering",
       description: "Circuit Design, Digital Systems, Communication",
       icon: "⚡",
       color: "from-purple-500 to-pink-500",
-      stats: { subjects: 6, students: 800 }
+      stats: { subjects: 5 }
     },
-    { 
-      id: "mech", 
-      name: "Mechanical Engineering", 
+    {
+      id: "mech",
+      name: "Mechanical Engineering",
       description: "Thermodynamics, Machine Design, Manufacturing",
       icon: "🔧",
       color: "from-green-500 to-teal-500",
-      stats: { subjects: 7, students: 900 }
+      stats: { subjects: 5 }
     },
-    { 
-      id: "civil", 
-      name: "Civil Engineering", 
+    {
+      id: "civil",
+      name: "Civil Engineering",
       description: "Structural Design, Construction, Transportation",
       icon: "🏗️",
       color: "from-orange-500 to-red-500",
-      stats: { subjects: 6, students: 750 }
+      stats: { subjects: 5 }
     },
   ];
 
@@ -92,7 +92,7 @@ export default function BranchPage() {
               `}>
                 {/* Gradient Background */}
                 <div className={`absolute inset-0 bg-gradient-to-br ${branch.color} opacity-5 group-hover:opacity-10 transition-opacity duration-300`}></div>
-                
+
                 {/* Card Content */}
                 <div className="relative p-8">
                   {/* Icon and Header */}

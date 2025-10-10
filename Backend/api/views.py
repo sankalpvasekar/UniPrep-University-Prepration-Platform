@@ -247,6 +247,113 @@ def dataset_subjects(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+def concepts(request, subject_id):
+    """
+    Concept distribution for a subject, optionally filtered by study year.
+    Query param: year=FY|SY|TY|Final Year
+    Returns: { concepts: [{name, percent}], year }
+    """
+    try:
+        if not ANALYZER_AVAILABLE:
+            return Response({'concepts': [], 'source': 'analyzer_not_available'})
+
+        analyzer = get_analyzer()
+        if not analyzer or not analyzer.is_ready:
+            return Response({'concepts': [], 'source': 'dataset_not_ready'})
+
+        subject_name = subject_id.replace('-', ' ').title()
+        study_year = request.query_params.get('year')
+
+        prioritized = analyzer.get_prioritized_questions(subject_name, study_year=study_year)
+        if not prioritized:
+            return Response({'concepts': [], 'source': 'ai_analyzer', 'year': study_year})
+
+        from collections import Counter
+        cnt = Counter([q.get('topic', 'General') for q in prioritized])
+        total = sum(cnt.values()) or 1
+        concepts_list = [
+            {'name': name, 'percent': int(round((count / total) * 100))}
+            for name, count in cnt.most_common()
+        ]
+        return Response({'concepts': concepts_list, 'source': 'ai_analyzer', 'year': study_year})
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def dataset_years(request):
+    """
+    Get available study years (FY/SY/TY/Final Year) from CSV for a branch.
+    Query params: branch=CSE|ECE|MECH|CIVIL|EE (optional)
+    """
+    try:
+        if not ANALYZER_AVAILABLE:
+            return Response({'years': [], 'source': 'analyzer_not_available'})
+        analyzer = get_analyzer()
+        if not analyzer or not analyzer.is_ready:
+            return Response({'years': [], 'source': 'dataset_not_ready'})
+        branch = request.query_params.get('branch')
+        years = analyzer.get_years_from_csv(branch=branch)
+        return Response({'years': years, 'source': 'dataset'})
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def dataset_branches(request):
+    """
+    Get branches from CSV dataset via analyzer
+    """
+    try:
+        if not ANALYZER_AVAILABLE:
+            return Response({'branches': [], 'source': 'analyzer_not_available'})
+
+        analyzer = get_analyzer()
+        if not analyzer or not analyzer.is_ready:
+            return Response({'branches': [], 'source': 'dataset_not_ready'})
+
+        raw = analyzer.get_branches_from_csv()  # e.g., ['CSE','ECE','MECH','CIVIL','EE']
+        # Map to frontend-friendly IDs
+        id_map = {
+            'EE': 'electrical',
+            'CIVIL': 'civil',
+            'MECH': 'mech',
+            'ECE': 'ece',
+            'CSE': 'cse',
+        }
+        palette = [
+            'from-blue-500 to-cyan-500',
+            'from-purple-500 to-pink-500',
+            'from-green-500 to-teal-500',
+            'from-orange-500 to-red-500',
+            'from-yellow-500 to-orange-500',
+            'from-indigo-500 to-purple-500',
+        ]
+        emoji = ['💻','⚡','🔧','🏗️','⚡','📚']
+        branches = []
+        for i, b in enumerate(raw):
+            bid = id_map.get(b, b.lower())
+            branches.append({
+                'id': bid,
+                'name': {
+                    'cse': 'Computer Science Engineering',
+                    'ece': 'Electronics and Telecommunication Engineering',
+                    'mech': 'Mechanical Engineering',
+                    'civil': 'Civil Engineering',
+                    'electrical': 'Electrical Engineering',
+                }.get(bid, b),
+                'icon': emoji[i % len(emoji)],
+                'color': palette[i % len(palette)],
+            })
+        return Response({'branches': branches, 'source': 'dataset'})
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
 def ai_questions(request, subject_id):
     """
     Get AI-powered prioritized questions for a subject
@@ -301,10 +408,29 @@ def ai_questions(request, subject_id):
                 return Response({'error': 'Subject not found'}, status=status.HTTP_404_NOT_FOUND)
         
         # Use AI analyzer with dataset
-        categorized_questions = analyzer.analyze_subject(subject_name)
-        
+        study_year = request.query_params.get('year')  # e.g., FY/SY/TY/Final Year
+        top_param = request.query_params.get('top')
+        try:
+            top_n = int(top_param) if top_param is not None else 14
+        except ValueError:
+            top_n = 14
+        try:
+            categorized_questions = analyzer.analyze_subject(subject_name)
+        except Exception as e:
+            categorized_questions = {'easy': [], 'medium': [], 'hard': []}
+            print(f"analyze_subject error for {subject_name}: {e}")
+        try:
+            prioritized_all = analyzer.get_prioritized_questions(subject_name, study_year=study_year)
+        except Exception as e:
+            print(f"get_prioritized_questions error for {subject_name} ({study_year}): {e}")
+            prioritized_all = []
+        total_prioritized = len(prioritized_all)
+        prioritized = prioritized_all[:max(0, top_n)]
         return Response({
             **categorized_questions,
+            'prioritized': prioritized,
+            'total_prioritized': total_prioritized,
+            'year': study_year,
             'source': 'ai_analyzer'
         })
         

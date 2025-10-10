@@ -1,56 +1,73 @@
-import React, { useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 export default function DashboardPage() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const navigate = useNavigate();
 
-  const branches = [
-    { 
-      id: "cse", 
-      name: "Computer Science Engineering", 
-      description: "Algorithms, Data Structures, Software Engineering",
-      icon: "💻",
-      color: "from-blue-500 to-cyan-500",
-      stats: { subjects: 8, students: 1200 }
-    },
-    { 
-      id: "ece", 
-      name: "Electronics and Telecommunication Engineering", 
-      description: "Circuit Design, Digital Systems, Communication",
-      icon: "⚡",
-      color: "from-purple-500 to-pink-500",
-      stats: { subjects: 6, students: 800 }
-    },
-    { 
-      id: "mech", 
-      name: "Mechanical Engineering", 
-      description: "Thermodynamics, Machine Design, Manufacturing",
-      icon: "🔧",
-      color: "from-green-500 to-teal-500",
-      stats: { subjects: 7, students: 900 }
-    },
-    { 
-      id: "civil", 
-      name: "Civil Engineering", 
-      description: "Structural Design, Construction, Transportation",
-      icon: "🏗️",
-      color: "from-orange-500 to-red-500",
-      stats: { subjects: 6, students: 750 }
-    },
-    { 
-      id: "electrical", 
-      name: "Electrical Engineering", 
-      description: "Power Systems, Control Systems, Electronics",
-      icon: "⚡",
-      color: "from-yellow-500 to-orange-500",
-      stats: { subjects: 7, students: 850 }
-    },
-  ];
+  // Read logged-in user from localStorage
+  const { user, displayName, initials, email, username } = useMemo(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("user") || "{}");
+      const name =
+        stored?.name ||
+        stored?.username ||
+        (stored?.first_name && stored?.last_name
+          ? `${stored.first_name} ${stored.last_name}`
+          : null) ||
+        (stored?.email ? stored.email.split("@")[0] : "User");
+      const uname = stored?.username || (stored?.email ? stored.email.split("@")[0] : "");
+
+      const makeInitials = (n) => {
+        if (!n) return "U";
+        const parts = n.trim().split(/\s+/);
+        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      };
+
+      return {
+        user: stored,
+        displayName: name,
+        initials: makeInitials(name),
+        email: stored?.email || "",
+        username: uname,
+      };
+    } catch (_) {
+      return { user: {}, displayName: "User", initials: "U", email: "", username: "" };
+    }
+  }, []);
+
+  const [branches, setBranches] = useState([]);
+  const [loadingBranches, setLoadingBranches] = useState(true);
+  const [branchesError, setBranchesError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        setLoadingBranches(true);
+        const res = await fetch("http://localhost:8000/api/dataset/branches/");
+        const data = await res.json();
+        if (!cancelled) {
+          setBranches(Array.isArray(data.branches) ? data.branches : []);
+        }
+      } catch (e) {
+        if (!cancelled) setBranchesError("Failed to load branches");
+      } finally {
+        if (!cancelled) setLoadingBranches(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, []);
 
 
   const handleLogout = () => {
-    navigate("/");
+    try {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+    } catch (_) { }
+    navigate("/login");
   };
 
   return (
@@ -75,11 +92,11 @@ export default function DashboardPage() {
                 className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
               >
                 <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-medium text-sm">AK</span>
+                  <span className="text-white font-medium text-sm">{initials}</span>
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-medium text-gray-900">A K</p>
-                  <p className="text-xs text-gray-500">Computer Science</p>
+                  <p className="text-sm font-medium text-gray-900">{displayName}</p>
+                  <p className="text-xs text-gray-500">{displayName}</p>
                 </div>
                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -90,8 +107,8 @@ export default function DashboardPage() {
               {showProfileMenu && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
                   <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900">A K</p>
-                    <p className="text-xs text-gray-500">ak@test.com</p>
+                    <p className="text-sm font-medium text-gray-900">{displayName}</p>
+                    <p className="text-xs text-gray-500">{displayName}</p>
                   </div>
                   <Link
                     to="/profile"
@@ -128,7 +145,7 @@ export default function DashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Welcome back, AK!</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Welcome back, {displayName}!</h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
             Ready to continue your engineering journey? Choose your branch below to explore subjects, materials, and interactive learning resources.
           </p>
@@ -143,16 +160,16 @@ export default function DashboardPage() {
 
           <div className="max-w-6xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
-              {branches.map((branch) => (
+              {(loadingBranches ? [] : branches).map((branch) => (
                 <Link
                   key={branch.id}
                   to={`/branch/${branch.id}/year-selection`}
-                  className="group relative overflow-hidden rounded-2xl bg-white shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:scale-105"
+                  className="group relative overflow-hidden rounded-2xl bg-white shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:scale-105 border border-gray-100"
                 >
                   {/* Gradient Background */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${branch.color} opacity-5 group-hover:opacity-10 transition-opacity duration-300`}></div>
-                  
-                  <div className="relative p-6">
+                  <div className={`absolute inset-0 bg-gradient-to-br ${branch.color} opacity-5 group-hover:opacity-10 transition-opacity duration-300 pointer-events-none`}></div>
+
+                  <div className="relative p-6 flex flex-col h-full min-h-[260px]">
                     {/* Header with Icon */}
                     <div className="flex items-start justify-between mb-4">
                       <div className={`
@@ -178,26 +195,20 @@ export default function DashboardPage() {
                       <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-gray-800 transition-colors leading-tight">
                         {branch.name}
                       </h3>
-                      <p className="text-sm text-gray-600 leading-relaxed group-hover:text-gray-700 transition-colors">
-                        {branch.description}
-                      </p>
+                      {branch.description && (
+                        <p className="text-sm text-gray-600 leading-relaxed group-hover:text-gray-700 transition-colors">
+                          {branch.description}
+                        </p>
+                      )}
                     </div>
 
                     {/* Stats */}
-                    <div className="flex items-center justify-between text-sm text-gray-500">
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center">
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                          </svg>
-                          <span>{branch.stats.subjects} subjects</span>
-                        </div>
-                        <div className="flex items-center">
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                          </svg>
-                          <span>{branch.stats.students}+ students</span>
-                        </div>
+                    <div className="mt-auto pt-2">
+                      <div className="inline-flex items-center px-3 py-1 rounded-full bg-gray-50 text-xs font-medium text-gray-700 border border-gray-200">
+                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3M3 11h18M5 19h14a2 2 0 002-2v-8H3v8a2 2 0 002 2z" />
+                        </svg>
+                        <span className="ml-1">4 years</span>
                       </div>
                     </div>
 

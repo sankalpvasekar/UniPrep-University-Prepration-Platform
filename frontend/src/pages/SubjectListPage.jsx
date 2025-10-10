@@ -6,10 +6,42 @@ export default function SubjectListPage() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("name");
-  const [filterBy, setFilterBy] = useState("all");
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
+  // Navbar user info
+  const { displayName, initials } = useMemo(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("user") || "{}");
+      const name =
+        stored?.name ||
+        (stored?.first_name && stored?.last_name
+          ? `${stored.first_name} ${stored.last_name}`
+          : null) ||
+        stored?.username ||
+        (stored?.email ? stored.email.split("@")[0] : "User");
+      const makeInitials = (n) => {
+        if (!n) return "U";
+        const parts = n.trim().split(/\s+/);
+        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      };
+      return { displayName: name, initials: makeInitials(name) };
+    } catch (_) {
+      return { displayName: "User", initials: "U" };
+    }
+  }, []);
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+    } catch (_) {}
+    navigate("/login");
+  };
+
+  // Branch metadata (restored)
   const branchData = {
     cse: { name: "Computer Science Engineering", icon: "💻", color: "from-blue-500 to-cyan-500" },
     ece: { name: "Electronics and Telecommunication Engineering", icon: "⚡", color: "from-purple-500 to-pink-500" },
@@ -58,13 +90,10 @@ export default function SubjectListPage() {
         const data = await response.json();
 
         if (data.subjects && data.subjects.length > 0) {
-          // Limit to 5 subjects and add additional properties for UI
+          // Limit to 5 subjects and ensure a credits field for display
           const enrichedSubjects = data.subjects.slice(0, 5).map((subject, idx) => ({
             ...subject,
-            difficulty: ['easy', 'medium', 'hard'][idx % 3],
-            credits: [3, 4, 3, 4, 3][idx % 5],
-            progress: [75, 60, 85, 45, 50][idx % 5],
-            lastAccessed: ['2 days ago', '1 week ago', '3 days ago', 'Recently', '5 days ago'][idx % 5]
+            credits: subject.credits ?? [3, 4, 3, 4, 3][idx % 5],
           }));
           setSubjects(enrichedSubjects);
         } else {
@@ -74,56 +103,46 @@ export default function SubjectListPage() {
               id: "ds", 
               name: "Data Structures", 
               description: "Arrays, Linked Lists, Trees, Graphs, and Algorithms",
-              difficulty: "medium",
               credits: 4,
               icon: "🌳",
               color: "from-blue-500 to-cyan-500",
-              progress: 75,
-              lastAccessed: "2 days ago"
+              
             },
             { 
               id: "os", 
               name: "Operating Systems", 
               description: "Process Management, Memory Management, File Systems",
-              difficulty: "hard",
               credits: 3,
               icon: "⚙️",
               color: "from-purple-500 to-pink-500",
-              progress: 60,
-              lastAccessed: "1 week ago"
+              
             },
             { 
               id: "dbms", 
               name: "Database Management Systems", 
               description: "SQL, Normalization, Transactions, Query Optimization",
-              difficulty: "medium",
               credits: 4,
               icon: "🗄️",
               color: "from-green-500 to-teal-500",
-              progress: 85,
-              lastAccessed: "3 days ago"
+              
             },
             { 
               id: "cn", 
               name: "Computer Networks", 
               description: "OSI Model, TCP/IP, Routing, Network Security",
-              difficulty: "medium",
               credits: 3,
               icon: "🌐",
               color: "from-orange-500 to-red-500",
-              progress: 45,
-              lastAccessed: "Recently"
+              
             },
             { 
               id: "algo", 
               name: "Algorithm Design", 
               description: "Sorting, Searching, Dynamic Programming, Greedy Algorithms",
-              difficulty: "hard",
               credits: 4,
               icon: "🧮",
               color: "from-pink-500 to-purple-500",
-              progress: 50,
-              lastAccessed: "1 week ago"
+              
             }
           ]);
         }
@@ -135,56 +154,46 @@ export default function SubjectListPage() {
             id: "ds", 
             name: "Data Structures", 
             description: "Arrays, Linked Lists, Trees, Graphs, and Algorithms",
-            difficulty: "medium",
             credits: 4,
             icon: "🌳",
             color: "from-blue-500 to-cyan-500",
-            progress: 75,
-            lastAccessed: "2 days ago"
+            
           },
           { 
             id: "os", 
             name: "Operating Systems", 
             description: "Process Management, Memory Management, File Systems",
-            difficulty: "hard",
             credits: 3,
             icon: "⚙️",
             color: "from-purple-500 to-pink-500",
-            progress: 60,
-            lastAccessed: "1 week ago"
+            
           },
           { 
             id: "dbms", 
             name: "Database Management Systems", 
             description: "SQL, Normalization, Transactions, Query Optimization",
-            difficulty: "medium",
             credits: 4,
             icon: "🗄️",
             color: "from-green-500 to-teal-500",
-            progress: 85,
-            lastAccessed: "3 days ago"
+            
           },
           { 
             id: "cn", 
             name: "Computer Networks", 
             description: "OSI Model, TCP/IP, Routing, Network Security",
-            difficulty: "medium",
             credits: 3,
             icon: "🌐",
             color: "from-orange-500 to-red-500",
-            progress: 45,
-            lastAccessed: "Recently"
+            
           },
           { 
             id: "algo", 
             name: "Algorithm Design", 
             description: "Sorting, Searching, Dynamic Programming, Greedy Algorithms",
-            difficulty: "hard",
             credits: 4,
             icon: "🧮",
             color: "from-pink-500 to-purple-500",
-            progress: 50,
-            lastAccessed: "1 week ago"
+            
           }
         ]);
       } finally {
@@ -199,42 +208,23 @@ export default function SubjectListPage() {
     let filtered = subjects.filter(subject => {
       const matchesSearch = subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           subject.description.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesFilter = filterBy === "all" || subject.difficulty === filterBy;
-      return matchesSearch && matchesFilter;
+      return matchesSearch;
     });
 
     return filtered.sort((a, b) => {
       switch (sortBy) {
         case "name":
           return a.name.localeCompare(b.name);
-        case "progress":
-          return b.progress - a.progress;
-        case "difficulty":
-          const difficultyOrder = { easy: 1, medium: 2, hard: 3 };
-          return difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty];
         case "credits":
           return b.credits - a.credits;
         default:
           return 0;
       }
     });
-  }, [subjects, searchTerm, sortBy, filterBy]);
+  }, [subjects, searchTerm, sortBy]);
 
-  const getDifficultyColor = (difficulty) => {
-    switch (difficulty) {
-      case "easy": return "text-green-600 bg-green-100";
-      case "medium": return "text-yellow-600 bg-yellow-100";
-      case "hard": return "text-red-600 bg-red-100";
-      default: return "text-gray-600 bg-gray-100";
-    }
-  };
-
-  const getProgressColor = (progress) => {
-    if (progress >= 80) return "from-green-500 to-emerald-500";
-    if (progress >= 60) return "from-blue-500 to-cyan-500";
-    if (progress >= 40) return "from-yellow-500 to-orange-500";
-    return "from-red-500 to-pink-500";
-  };
+  // Year label for card badge
+  const yearShortMap = { fy: 'FY', sy: 'SY', ty: 'TY', second: 'SY', third: 'TY', final: 'Final Year' };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100">
@@ -251,15 +241,50 @@ export default function SubjectListPage() {
               <h1 className="text-2xl font-bold text-gray-900">UniPrep</h1>
             </Link>
 
-            {/* User Profile */}
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm text-gray-500">Welcome back!</p>
-                <p className="font-medium text-gray-900">John Doe</p>
-              </div>
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                <span className="text-white font-medium text-sm">JD</span>
-              </div>
+            {/* User Profile Menu */}
+            <div className="relative">
+              <button
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                  <span className="text-white font-medium text-sm">{initials}</span>
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-gray-900">{displayName}</p>
+                  <p className="text-xs text-gray-500">{displayName}</p>
+                </div>
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {showProfileMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="text-sm font-medium text-gray-900">{displayName}</p>
+                    <p className="text-xs text-gray-500">{displayName}</p>
+                  </div>
+                  <Link
+                    to="/profile"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Profile Settings
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                  >
+                    <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Sign Out
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -311,7 +336,7 @@ export default function SubjectListPage() {
             </div>
           </div>
 
-          {/* Search and Filters */}
+          {/* Search and Sort */}
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Search Bar */}
             <div className="flex-1 relative">
@@ -336,21 +361,7 @@ export default function SubjectListPage() {
               className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
             >
               <option value="name">Sort by Name</option>
-              <option value="progress">Sort by Progress</option>
-              <option value="difficulty">Sort by Difficulty</option>
               <option value="credits">Sort by Credits</option>
-            </select>
-
-            {/* Filter Dropdown */}
-            <select
-              value={filterBy}
-              onChange={(e) => setFilterBy(e.target.value)}
-              className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-            >
-              <option value="all">All Difficulties</option>
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
             </select>
           </div>
         </div>
@@ -381,17 +392,14 @@ export default function SubjectListPage() {
           {filteredAndSortedSubjects.map((subject) => (
             <Link
               key={subject.id}
-              to={`/subject/${subject.id}`}
-              className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 overflow-hidden"
+              to={`/subject/${subject.id}?year=${encodeURIComponent((() => {
+                const map = { 'second': 'SY', 'third': 'TY', 'final': 'Final Year', 'fy': 'FY', 'sy': 'SY', 'ty': 'TY' };
+                return map[yearId] || 'FY';
+              })())}`}
+              className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 overflow-hidden border border-gray-100"
             >
-              {/* Progress Bar */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gray-200">
-                <div 
-                  className={`h-full bg-gradient-to-r ${getProgressColor(subject.progress)} transition-all duration-500`}
-                  style={{ width: `${subject.progress}%` }}
-                ></div>
-              </div>
-
+              {/* Base faint gradient overlay */}
+              <div className={`absolute inset-0 bg-gradient-to-br ${subject.color} opacity-5 pointer-events-none`}></div>
               <div className="p-6">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-4">
@@ -403,8 +411,8 @@ export default function SubjectListPage() {
                     {subject.icon}
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(subject.difficulty)}`}>
-                      {subject.difficulty}
+                    <span className="px-2 py-1 rounded-full text-xs font-medium text-gray-700 bg-gray-100">
+                      {yearShortMap[yearId] || 'FY'}
                     </span>
                     <span className="text-xs text-gray-500">{subject.credits} credits</span>
                   </div>
@@ -420,33 +428,9 @@ export default function SubjectListPage() {
                   </p>
                 </div>
 
-                {/* Progress and Stats */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">Progress</span>
-                    <span className="font-medium text-gray-900">{subject.progress}%</span>
-                  </div>
-                  
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full bg-gradient-to-r ${getProgressColor(subject.progress)} transition-all duration-500`}
-                      style={{ width: `${subject.progress}%` }}
-                    ></div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>Last accessed: {subject.lastAccessed}</span>
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Hover Effect Overlay */}
+                {/* Hover Effect Overlay (slightly stronger on hover) */}
                 <div className={`
-                  absolute inset-0 bg-gradient-to-br ${subject.color} opacity-0 group-hover:opacity-5
+                  absolute inset-0 bg-gradient-to-br ${subject.color} opacity-0 group-hover:opacity-10
                   transition-opacity duration-300 rounded-2xl
                 `}></div>
               </div>

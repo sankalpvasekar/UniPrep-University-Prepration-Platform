@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { papers } from "../data/papers";
 import { videos } from "../data/videos";
 import Chatbot from "../components/Chatbot";
@@ -7,16 +7,21 @@ import Chatbot from "../components/Chatbot";
 export default function SubjectPage() {
   const { subjectId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState("questions");
   const [expandedQuestions, setExpandedQuestions] = useState({});
   const [aiAnswers, setAiAnswers] = useState({});
   const [loadingAiAnswers, setLoadingAiAnswers] = useState({});
   const [questions, setQuestions] = useState({ easy: [], medium: [], hard: [] });
-  const [loadingQuestions, setLoadingQuestions] = useState(true);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [concepts, setConcepts] = useState([]);
+  const [loadingConcepts, setLoadingConcepts] = useState(false);
+  const [prioritized, setPrioritized] = useState([]);
   const [studyProgress, setStudyProgress] = useState({
     questions: 0,
     papers: 0,
     videos: 0,
+    concepts: 0,
     chat: 0
   });
 
@@ -27,31 +32,33 @@ export default function SubjectPage() {
     description: "Loading subject information..."
   });
 
-  // Fetch AI-generated questions from backend
+  // Fetch questions when Questions tab is active
   useEffect(() => {
+    if (activeTab !== 'questions') return;
+    const search = new URLSearchParams(location.search);
+    const studyYear = search.get('year') || '';
+    let cancelled = false;
     const fetchQuestions = async () => {
       try {
         setLoadingQuestions(true);
-        const response = await fetch(`http://localhost:8000/api/ai-questions/${subjectId}/`);
+        const url = new URL(`http://localhost:8000/api/ai-questions/${subjectId}/`);
+        if (studyYear) url.searchParams.set('year', studyYear);
+        const response = await fetch(url.toString());
         const data = await response.json();
-        
+        if (cancelled) return;
         if (data.error) {
           console.error('Error fetching questions:', data.error);
-          // Set empty questions on error
           setQuestions({ easy: [], medium: [], hard: [] });
+          setPrioritized([]);
         } else {
           setQuestions({
             easy: data.easy || [],
             medium: data.medium || [],
             hard: data.hard || []
           });
-          
-          // Update subject info based on fetched data
-          if (data.easy.length > 0 || data.medium.length > 0 || data.hard.length > 0) {
-            const subjectName = subjectId.split('-').map(word => 
-              word.charAt(0).toUpperCase() + word.slice(1)
-            ).join(' ');
-            
+          setPrioritized(Array.isArray(data.prioritized) ? data.prioritized : []);
+          if ((data.easy?.length || 0) + (data.medium?.length || 0) + (data.hard?.length || 0) > 0) {
+            const subjectName = subjectId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
             setCurrentSubject({
               name: subjectName,
               icon: "📚",
@@ -61,20 +68,57 @@ export default function SubjectPage() {
           }
         }
       } catch (error) {
-        console.error('Failed to fetch questions:', error);
-        setQuestions({ easy: [], medium: [], hard: [] });
+        if (!cancelled) {
+          console.error('Failed to fetch questions:', error);
+          setQuestions({ easy: [], medium: [], hard: [] });
+          setPrioritized([]);
+        }
       } finally {
-        setLoadingQuestions(false);
+        if (!cancelled) setLoadingQuestions(false);
       }
     };
-
     fetchQuestions();
-  }, [subjectId]);
+    return () => { cancelled = true; };
+  }, [subjectId, activeTab]);
+
+  // Fetch concepts when Concepts tab is active
+  useEffect(() => {
+    if (activeTab !== 'concepts') return;
+    let cancelled = false;
+    const fetchConcepts = async () => {
+      try {
+        setLoadingConcepts(true);
+        const search = new URLSearchParams(location.search);
+        const studyYear = search.get('year') || '';
+        const url = new URL(`http://localhost:8000/api/concepts/${subjectId}/`);
+        if (studyYear) url.searchParams.set('year', studyYear);
+        const res = await fetch(url.toString());
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.error) {
+          console.error('Error fetching concepts:', data.error);
+          setConcepts([]);
+        } else {
+          setConcepts(Array.isArray(data.concepts) ? data.concepts : []);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          console.error('Failed to fetch concepts:', e);
+          setConcepts([]);
+        }
+      } finally {
+        if (!cancelled) setLoadingConcepts(false);
+      }
+    };
+    fetchConcepts();
+    return () => { cancelled = true; };
+  }, [subjectId, activeTab]);
 
   const tabs = [
     { id: "questions", name: "Questions", icon: "❓", count: questions.easy.length + questions.medium.length + questions.hard.length },
     { id: "papers", name: "Past Papers", icon: "📄", count: papers.length },
     { id: "videos", name: "Videos & Notes", icon: "🎥", count: videos.length },
+    { id: "concepts", name: "Concepts", icon: "📘", count: concepts.length },
     { id: "chat", name: "AI Assistant", icon: "🤖", count: null }
   ];
 
@@ -155,20 +199,6 @@ export default function SubjectPage() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm text-gray-500">Study Progress</p>
-                <div className="flex items-center space-x-2">
-                  <div className="w-24 bg-gray-200 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full bg-gradient-to-r ${getProgressColor(Object.values(studyProgress).reduce((a, b) => a + b, 0) / 4)}`}
-                      style={{ width: `${(Object.values(studyProgress).reduce((a, b) => a + b, 0) / 4) * 10}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">
-                    {Math.round((Object.values(studyProgress).reduce((a, b) => a + b, 0) / 4) * 10)}%
-                  </span>
-                </div>
-              </div>
               <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
                 <span className="text-white font-medium text-sm">S</span>
               </div>
@@ -229,135 +259,76 @@ export default function SubjectPage() {
                     <p className="text-sm text-gray-500 mt-2">This may take a few moments</p>
                   </div>
                 </div>
-              ) : questions.easy.length === 0 && questions.medium.length === 0 && questions.hard.length === 0 ? (
+              ) : prioritized.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
                     <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-medium text-gray-900 mb-2">No questions available</h3>
-                  <p className="text-gray-500">Questions for this subject are not available in the dataset</p>
+                  <h3 className="text-xl font-medium text-gray-900 mb-2">No prioritized questions available</h3>
+                  <p className="text-gray-500">Try another subject or ensure dataset is loaded</p>
                 </div>
               ) : (
-              <div className="space-y-8">
-                {Object.entries(questions).map(([difficulty, questionList]) => (
-                  <div key={difficulty} className="space-y-4">
-                    <div className="flex items-center space-x-3">
-                      <h3 className="text-xl font-semibold text-gray-900 capitalize">{difficulty} Questions</h3>
-                      <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm">
-                        {questionList.length} questions
-                      </span>
-                    </div>
-                    <div className="grid gap-4">
-                      {questionList.map((q, i) => (
-                        <div key={i} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <p className="text-gray-900 font-medium mb-2">{q.question}</p>
-                              <div className="flex items-center space-x-4 text-sm text-gray-500 mb-3">
-                                <span>Year: {q.year}</span>
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  difficulty === 'easy' ? 'bg-green-100 text-green-600' :
-                                  difficulty === 'medium' ? 'bg-yellow-100 text-yellow-600' :
-                                  'bg-red-100 text-red-600'
-                                }`}>
-                                  {difficulty}
-                                </span>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <button
-                                  onClick={() => getAiAnswer(difficulty, i)}
-                                  disabled={loadingAiAnswers[`${difficulty}-${i}`]}
-                                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${
-                                    loadingAiAnswers[`${difficulty}-${i}`]
-                                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                      : aiAnswers[`${difficulty}-${i}`]
-                                      ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                      : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 shadow-md hover:shadow-lg'
-                                  }`}
-                                >
-                                  {loadingAiAnswers[`${difficulty}-${i}`] ? (
-                                    <>
-                                      <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                      </svg>
-                                      <span>Getting AI Answer...</span>
-                                    </>
-                                  ) : aiAnswers[`${difficulty}-${i}`] ? (
-                                    <>
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                      </svg>
-                                      <span>AI Answer Ready</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                      </svg>
-                                      <span>Get AI Answer</span>
-                                    </>
-                                  )}
-                                </button>
-                                <button
-                                  onClick={() => toggleQuestion(difficulty, i)}
-                                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                                >
-                                  <svg className={`w-5 h-5 text-gray-400 transition-transform ${expandedQuestions[`${difficulty}-${i}`] ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                  </svg>
-                                </button>
-                              </div>
-                            </div>
+                <div className="space-y-4">
+                  {prioritized.map((q, i) => (
+                    <div key={i} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 pr-4">
+                          <p className="text-gray-900 font-medium mb-2">{q.question}</p>
+                          <div className="flex items-center space-x-4 text-sm text-gray-500 mb-2">
+                            <span>Year: {q.year}</span>
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-600">{q.topic}</span>
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-600">{q.marks} marks</span>
                           </div>
-                          {expandedQuestions[`${difficulty}-${i}`] && (
-                            <div className="mt-4 pt-4 border-t border-gray-100">
-                              {/* Original Answer */}
-                              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                                <div className="flex items-center justify-between mb-3">
-                                  <h4 className="font-medium text-gray-900">Original Answer:</h4>
-                                  <div className="flex items-center space-x-2 text-sm text-gray-500">
-                                    <span className="px-2 py-1 bg-blue-100 text-blue-600 rounded-full text-xs">
-                                      {q.topic}
-                                    </span>
-                                    <span className="px-2 py-1 bg-green-100 text-green-600 rounded-full text-xs">
-                                      {q.marks} marks
-                                    </span>
-                                  </div>
-                                </div>
-                                <p className="text-gray-700 text-sm leading-relaxed">
-                                  {q.answer}
-                                </p>
-                              </div>
-
-                              {/* AI Answer */}
-                              {aiAnswers[`${difficulty}-${i}`] && (
-                                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
-                                  <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center space-x-2">
-                                      <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                      </svg>
-                                      <h4 className="font-medium text-purple-900">AI Enhanced Answer:</h4>
-                                    </div>
-                                    <span className="px-2 py-1 bg-purple-100 text-purple-600 rounded-full text-xs font-medium">
-                                      AI Powered
-                                    </span>
-                                  </div>
-                                  <div className="text-purple-800 text-sm leading-relaxed whitespace-pre-line">
-                                    {aiAnswers[`${difficulty}-${i}`]}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className={`h-2 rounded-full bg-gradient-to-r ${q.priority_percent >= 70 ? 'from-green-500 to-emerald-500' : q.priority_percent >= 40 ? 'from-blue-500 to-cyan-500' : 'from-yellow-500 to-orange-500'}`}
+                              style={{ width: `${q.priority_percent}%` }}
+                            ></div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2">Priority: {q.priority_percent}% • Pattern: {q.pattern}</p>
                         </div>
-                      ))}
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => getAiAnswer('p', i)}
+                            disabled={loadingAiAnswers[`p-${i}`]}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${
+                              loadingAiAnswers[`p-${i}`]
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : aiAnswers[`p-${i}`]
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 shadow-md hover:shadow-lg'
+                            }`}
+                          >
+                            {loadingAiAnswers[`p-${i}`] ? (
+                              <>
+                                <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                <span>Getting AI Answer...</span>
+                              </>
+                            ) : aiAnswers[`p-${i}`] ? (
+                              <>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span>AI Answer Ready</span>
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                </svg>
+                                <span>Get AI Answer</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
               )}
           </div>
         )}
@@ -548,6 +519,56 @@ export default function SubjectPage() {
               </div>
           </div>
         )}
+
+          {/* Concepts Tab */}
+          {activeTab === "concepts" && (
+            <div className="p-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Concept Mastery Map</h2>
+                <button
+                  onClick={() => markAsStudied('concepts')}
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                >
+                  Mark as Studied
+                </button>
+              </div>
+
+              {(!concepts || concepts.length === 0) ? (
+                <div className="text-center py-12">
+                  <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                    <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-medium text-gray-900 mb-2">No concepts available</h3>
+                  <p className="text-gray-500">Concepts are derived from questions. Try generating questions first.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {concepts.map((c, idx) => (
+                    <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 text-white flex items-center justify-center text-sm font-bold">
+                            {idx + 1}
+                          </div>
+                          <h4 className="text-gray-900 font-semibold">{c.name}</h4>
+                        </div>
+                        <span className="text-sm font-medium text-gray-700">{c.percent}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full bg-gradient-to-r ${c.percent >= 70 ? 'from-green-500 to-emerald-500' : c.percent >= 40 ? 'from-blue-500 to-cyan-500' : 'from-yellow-500 to-orange-500'}`}
+                          style={{ width: `${c.percent}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">Based on distribution of topics in AI-generated questions</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Chat Tab */}
           {activeTab === "chat" && (

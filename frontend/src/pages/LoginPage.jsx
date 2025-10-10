@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
 export default function LoginPage() {
@@ -42,10 +42,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoLogin = () => {
-    setEmail("user@test.com");
-    setPassword("123456");
-  };
+  // Demo credentials removed
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
@@ -165,14 +162,7 @@ export default function LoginPage() {
               )}
             </button>
 
-            {/* Demo Login Button */}
-            <button
-              type="button"
-              onClick={handleDemoLogin}
-              className="w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200"
-            >
-              Use Demo Credentials
-            </button>
+            {/* Demo login removed */}
           </form>
 
           {/* Sign Up Link */}
@@ -183,9 +173,7 @@ export default function LoginPage() {
                 Sign up here
               </Link>
             </p>
-            <p className="text-xs text-gray-400 mt-2">
-              Demo credentials: user@test.com / 123456
-            </p>
+            {/* Demo note removed */}
           </div>
         </div>
       </div>
