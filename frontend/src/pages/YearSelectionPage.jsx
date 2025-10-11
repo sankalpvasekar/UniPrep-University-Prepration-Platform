@@ -113,7 +113,10 @@ export default function YearSelectionPage() {
             { id: 'final', name: 'Final Year', description: 'Capstone projects and industry preparation', icon: '🚀', color: 'from-green-500 to-teal-500' },
           ]);
         } else {
-          setYears(cards);
+          // Ensure consistent ordering: First -> Second -> Third -> Final
+          const order = { fy: 1, second: 2, third: 3, final: 4 };
+          const sorted = [...cards].sort((a, b) => (order[a.id] ?? 99) - (order[b.id] ?? 99));
+          setYears(sorted);
         }
       } catch (e) {
         if (!cancelled) {

@@ -12,15 +12,28 @@ from .serializers import (
     QuestionSerializer, PaperSerializer, VideoSerializer,
     UserProfileSerializer, RegisterSerializer, UserSerializer
 )
+import numpy as np
 # Import analyzer with error handling
 try:
-    from .uniprep_analyzer import get_analyzer
+    from .uniprep_analyzer import get_analyzer, reload_analyzer
     ANALYZER_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: AI Analyzer not available: {e}")
     ANALYZER_AVAILABLE = False
     def get_analyzer():
         return None
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def analyzer_reload(request):
+    """Force reload the global analyzer (use after data/code changes)."""
+    try:
+        if not ANALYZER_AVAILABLE:
+            return Response({'status': 'not_available'})
+        reload_analyzer()
+        return Response({'status': 'ok'})
+    except Exception as e:
+        return Response({'status': 'error', 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
@@ -263,19 +276,138 @@ def concepts(request, subject_id):
 
         subject_name = subject_id.replace('-', ' ').title()
         study_year = request.query_params.get('year')
+        predict_year = request.query_params.get('predict_year')
+        seed_param = request.query_params.get('seed')
 
-        prioritized = analyzer.get_prioritized_questions(subject_name, study_year=study_year)
-        if not prioritized:
-            return Response({'concepts': [], 'source': 'ai_analyzer', 'year': study_year})
+        # Temporarily override prediction year and random seed for reproducibility
+        old_year = analyzer.prediction_year
+        old_state = np.random.get_state()
+        try:
+            if predict_year:
+                try:
+                    analyzer.prediction_year = int(predict_year)
+                except Exception:
+                    pass
+            if seed_param is not None:
+                try:
+                    np.random.seed(int(seed_param))
+                except Exception:
+                    pass
 
-        from collections import Counter
-        cnt = Counter([q.get('topic', 'General') for q in prioritized])
-        total = sum(cnt.values()) or 1
-        concepts_list = [
-            {'name': name, 'percent': int(round((count / total) * 100))}
-            for name, count in cnt.most_common()
-        ]
-        return Response({'concepts': concepts_list, 'source': 'ai_analyzer', 'year': study_year})
+            prioritized = analyzer.get_prioritized_questions(subject_name, study_year=study_year)
+            if not prioritized:
+                return Response({'concepts': [], 'source': 'ai_analyzer', 'year': study_year})
+
+            # Compute topic priorities using final_score (sharper, consistent with questions list)
+            from collections import defaultdict
+            topic_to_score = defaultdict(float)
+            for item in prioritized:
+                topic = item.get('topic', 'General') or 'General'
+                score = float(item.get('final_score', 0.0))
+                # Fallback if final_score missing: weight by priority_percent
+                if score <= 0 and 'priority_percent' in item:
+                    score = float(item['priority_percent'])
+                topic_to_score[topic] += max(0.0, score)
+
+            # Take top 5 topics and rescale to 100%
+            ranked = sorted(topic_to_score.items(), key=lambda kv: kv[1], reverse=True)[:5]
+            total_score = sum(s for _, s in ranked) or 1.0
+            percents = [int(round((s / total_score) * 100)) for _, s in ranked]
+            diff = 100 - sum(percents)
+            if len(percents) > 0 and diff != 0:
+                percents[0] = max(0, percents[0] + diff)
+            concepts_list = [
+                {'name': name, 'percent': percents[i]}
+                for i, (name, _) in enumerate(ranked)
+            ]
+            return Response({'concepts': concepts_list, 'source': 'ai_analyzer', 'year': study_year})
+        finally:
+            # Restore analyzer year and RNG state
+            analyzer.prediction_year = old_year
+            try:
+                np.random.set_state(old_state)
+            except Exception:
+                pass
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def dataset_past_papers(request, subject_id):
+    """
+    Build past papers from the CSV dataset by grouping questions per subject and Qyear.
+    Query params:
+      - year: optional filter for study year (FY|SY|TY|Final Year)
+    Returns: { papers: [ { id, title, description, duration, totalMarks, difficulty, downloadCount, sections, url, qyear, study_year } ] }
+    """
+    try:
+        if not ANALYZER_AVAILABLE:
+            return Response({'papers': [], 'source': 'analyzer_not_available'})
+
+        analyzer = get_analyzer()
+        if not analyzer or not analyzer.is_ready or analyzer.df is None or analyzer.df.empty:
+            return Response({'papers': [], 'source': 'dataset_not_ready'})
+
+        subject_name = subject_id.replace('-', ' ').title()
+        study_year = request.query_params.get('year')  # FY|SY|TY|Final Year
+
+        df = analyzer.df.copy()
+        # Normalize for robust filtering
+        df['subject_norm'] = df['subject'].astype(str).str.strip().str.lower()
+        df['study_year_norm'] = df['study_year'].astype(str).str.strip()
+        df = df[df['subject_norm'] == subject_name.strip().lower()]
+        if study_year:
+            df = df[df['study_year_norm'] == str(study_year).strip()]
+
+        if df.empty:
+            return Response({'papers': [], 'subject': subject_name, 'year': study_year, 'source': 'dataset'})
+
+        # Ensure numeric
+        df['Qyear'] = pd.to_numeric(df['Qyear'], errors='coerce').astype('Int64')
+        df = df.dropna(subset=['Qyear'])
+
+        papers = []
+        for (qy), g in df.groupby('Qyear'):
+            qyear = int(qy)
+            questions = g[['question_text', 'mark_weightage']].dropna().to_dict('records')
+            total_marks = int(pd.to_numeric(g['mark_weightage'], errors='coerce').fillna(0).sum())
+            # Difficulty heuristic: based on avg marks
+            avg_marks = float(pd.to_numeric(g['mark_weightage'], errors='coerce').fillna(0).mean()) if len(g) > 0 else 0.0
+            if avg_marks <= 3:
+                difficulty = 'Easy'
+            elif avg_marks <= 7:
+                difficulty = 'Medium'
+            else:
+                difficulty = 'Hard'
+
+            # Sections: top topics from question_text quick heuristic
+            try:
+                topics = g['question_text'].astype(str).str.extractall(r"([A-Za-z][A-Za-z0-9\-]{3,})").droplevel(1)[0].str.title()
+                common = topics.value_counts().head(5).index.tolist()
+            except Exception:
+                common = []
+
+            paper_obj = {
+                'id': f"{subject_id}-{qyear}-{(study_year or 'ALL').replace(' ', '').lower()}",
+                'title': f"{subject_name} {qyear}{f' - {study_year}' if study_year else ''}",
+                'description': f"Auto-generated from dataset: {len(questions)} questions",
+                'duration': '3 hours',
+                'totalMarks': total_marks,
+                'difficulty': difficulty,
+                'downloadCount': 0,
+                'sections': common,
+                'url': '#',
+                'qyear': qyear,
+                'study_year': study_year or None,
+                'questions': questions,
+            }
+            papers.append(paper_obj)
+
+        # Sort by year descending
+        papers = sorted(papers, key=lambda p: p['qyear'], reverse=True)
+
+        return Response({'papers': papers, 'subject': subject_name, 'year': study_year, 'source': 'dataset'})
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -409,30 +541,66 @@ def ai_questions(request, subject_id):
         
         # Use AI analyzer with dataset
         study_year = request.query_params.get('year')  # e.g., FY/SY/TY/Final Year
+        predict_year = request.query_params.get('predict_year')
+        seed_param = request.query_params.get('seed')
         top_param = request.query_params.get('top')
         try:
             top_n = int(top_param) if top_param is not None else 14
         except ValueError:
             top_n = 14
+        # Temporarily override prediction year and random seed for reproducibility
+        old_year = analyzer.prediction_year
+        old_state = np.random.get_state()
         try:
-            categorized_questions = analyzer.analyze_subject(subject_name)
-        except Exception as e:
-            categorized_questions = {'easy': [], 'medium': [], 'hard': []}
-            print(f"analyze_subject error for {subject_name}: {e}")
-        try:
-            prioritized_all = analyzer.get_prioritized_questions(subject_name, study_year=study_year)
-        except Exception as e:
-            print(f"get_prioritized_questions error for {subject_name} ({study_year}): {e}")
-            prioritized_all = []
-        total_prioritized = len(prioritized_all)
-        prioritized = prioritized_all[:max(0, top_n)]
-        return Response({
-            **categorized_questions,
-            'prioritized': prioritized,
-            'total_prioritized': total_prioritized,
-            'year': study_year,
-            'source': 'ai_analyzer'
-        })
+            if predict_year:
+                try:
+                    analyzer.prediction_year = int(predict_year)
+                except Exception:
+                    pass
+            if seed_param is not None:
+                try:
+                    np.random.seed(int(seed_param))
+                except Exception:
+                    pass
+
+            try:
+                categorized_questions = analyzer.analyze_subject(subject_name, study_year=study_year)
+            except Exception as e:
+                categorized_questions = {'easy': [], 'medium': [], 'hard': []}
+                print(f"analyze_subject error for {subject_name}: {e}")
+            try:
+                prioritized_all = analyzer.get_prioritized_questions(subject_name, study_year=study_year)
+            except Exception as e:
+                print(f"get_prioritized_questions error for {subject_name} ({study_year}): {e}")
+                prioritized_all = []
+            total_prioritized = len(prioritized_all)
+            # Colab-like scaling: relative to max score, cap at 99
+            prioritized_top = prioritized_all[:max(0, top_n)]
+            try:
+                scores = [max(0.0, float(item.get('final_score', 0.0))) for item in prioritized_top]
+                max_score = max(scores) if scores else 1.0
+                max_score = max(1e-9, max_score)
+                for i, item in enumerate(prioritized_top):
+                    s = max(0.0, float(item.get('final_score', 0.0)))
+                    pct = int((s / max_score) * 100)
+                    item['priority_percent'] = min(99, pct)
+            except Exception:
+                pass
+            prioritized = prioritized_top
+            return Response({
+                **categorized_questions,
+                'prioritized': prioritized,
+                'total_prioritized': total_prioritized,
+                'year': study_year,
+                'source': 'ai_analyzer'
+            })
+        finally:
+            # Restore analyzer year and RNG state
+            analyzer.prediction_year = old_year
+            try:
+                np.random.set_state(old_state)
+            except Exception:
+                pass
         
     except Exception as e:
         return Response(

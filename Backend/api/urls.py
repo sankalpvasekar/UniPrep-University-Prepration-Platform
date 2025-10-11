@@ -11,6 +11,9 @@ router.register(r'papers', views.PaperViewSet)
 router.register(r'videos', views.VideoViewSet)
 
 urlpatterns = [
+    # Maintenance
+    path('reload/', views.analyzer_reload, name='analyzer_reload'),
+
     # Auth endpoints
     path('auth/register/', views.register, name='register'),
     path('auth/login/', views.login, name='login'),
@@ -21,6 +24,7 @@ urlpatterns = [
     path('dataset/subjects/', views.dataset_subjects, name='dataset_subjects'),
     path('dataset/years/', views.dataset_years, name='dataset_years'),
     path('dataset/branches/', views.dataset_branches, name='dataset_branches'),
+    path('dataset/papers/<str:subject_id>/', views.dataset_past_papers, name='dataset_past_papers'),
     path('ai-questions/<str:subject_id>/', views.ai_questions, name='ai_questions'),
     path('ai-questions/<str:subject_id>', views.ai_questions),  # tolerate missing slash
     path('concepts/<str:subject_id>/', views.concepts, name='concepts'),

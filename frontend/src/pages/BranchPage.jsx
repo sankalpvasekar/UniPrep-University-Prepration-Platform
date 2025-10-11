@@ -1,44 +1,92 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 export default function BranchPage() {
   const [hoveredCard, setHoveredCard] = useState(null);
+  const [branches, setBranches] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const branches = [
-    {
-      id: "cse",
-      name: "Computer Science Engineering",
-      description: "Algorithms, Data Structures, Software Engineering",
-      icon: "💻",
-      color: "from-blue-500 to-cyan-500",
-      stats: { subjects: 5 }
-    },
-    {
-      id: "ece",
-      name: "Electronics and Telecommunication Engineering",
-      description: "Circuit Design, Digital Systems, Communication",
-      icon: "⚡",
-      color: "from-purple-500 to-pink-500",
-      stats: { subjects: 5 }
-    },
-    {
-      id: "mech",
-      name: "Mechanical Engineering",
-      description: "Thermodynamics, Machine Design, Manufacturing",
-      icon: "🔧",
-      color: "from-green-500 to-teal-500",
-      stats: { subjects: 5 }
-    },
-    {
-      id: "civil",
-      name: "Civil Engineering",
-      description: "Structural Design, Construction, Transportation",
-      icon: "🏗️",
-      color: "from-orange-500 to-red-500",
-      stats: { subjects: 5 }
-    },
-  ];
+  useEffect(() => {
+    let cancelled = false;
+    const fetchBranches = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch("http://localhost:8000/api/dataset/branches/");
+        const data = await res.json();
+        if (cancelled) return;
+        if (Array.isArray(data.branches) && data.branches.length > 0) {
+          // Normalize to expected props
+          const normalized = data.branches.map((b) => ({
+            id: b.id,
+            name: b.name,
+            description: b.description || "Select to explore subjects and materials",
+            icon: b.icon || "📚",
+            color: b.color || "from-blue-500 to-cyan-500",
+            stats: { subjects: 5, students: b.students || 0 },
+          }));
+          setBranches(normalized);
+        } else {
+          setBranches([
+            {
+              id: "cse",
+              name: "Computer Science Engineering",
+              description: "Algorithms, Data Structures, Software Engineering",
+              icon: "💻",
+              color: "from-blue-500 to-cyan-500",
+              stats: { subjects: 5, students: 0 },
+            },
+            {
+              id: "ece",
+              name: "Electronics and Telecommunication Engineering",
+              description: "Circuit Design, Digital Systems, Communication",
+              icon: "⚡",
+              color: "from-purple-500 to-pink-500",
+              stats: { subjects: 5, students: 0 },
+            },
+            {
+              id: "mech",
+              name: "Mechanical Engineering",
+              description: "Thermodynamics, Machine Design, Manufacturing",
+              icon: "🔧",
+              color: "from-green-500 to-teal-500",
+              stats: { subjects: 5, students: 0 },
+            },
+            {
+              id: "civil",
+              name: "Civil Engineering",
+              description: "Structural Design, Construction, Transportation",
+              icon: "🏗️",
+              color: "from-orange-500 to-red-500",
+              stats: { subjects: 5, students: 0 },
+            },
+            {
+              id: "electrical",
+              name: "Electrical Engineering",
+              description: "Power Systems, Control Systems, Electronics",
+              icon: "⚡",
+              color: "from-yellow-500 to-orange-500",
+              stats: { subjects: 5, students: 0 },
+            },
+          ]);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setBranches([
+            { id: "cse", name: "Computer Science Engineering", description: "Algorithms, Data Structures, Software Engineering", icon: "💻", color: "from-blue-500 to-cyan-500", stats: { subjects: 5, students: 0 } },
+            { id: "ece", name: "Electronics and Telecommunication Engineering", description: "Circuit Design, Digital Systems, Communication", icon: "⚡", color: "from-purple-500 to-pink-500", stats: { subjects: 5, students: 0 } },
+            { id: "mech", name: "Mechanical Engineering", description: "Thermodynamics, Machine Design, Manufacturing", icon: "🔧", color: "from-green-500 to-teal-500", stats: { subjects: 5, students: 0 } },
+            { id: "civil", name: "Civil Engineering", description: "Structural Design, Construction, Transportation", icon: "🏗️", color: "from-orange-500 to-red-500", stats: { subjects: 5, students: 0 } },
+            { id: "electrical", name: "Electrical Engineering", description: "Power Systems, Control Systems, Electronics", icon: "⚡", color: "from-yellow-500 to-orange-500", stats: { subjects: 5, students: 0 } },
+          ]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchBranches();
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100">
@@ -77,10 +125,10 @@ export default function BranchPage() {
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {branches.map((branch, index) => (
+          {(loading ? [] : branches).map((branch) => (
             <Link
               key={branch.id}
-              to={`/branch/${branch.id}/subjects`}
+              to={`/branch/${branch.id}/year-selection`}
               className="group relative"
               onMouseEnter={() => setHoveredCard(branch.id)}
               onMouseLeave={() => setHoveredCard(null)}
