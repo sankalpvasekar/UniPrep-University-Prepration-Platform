@@ -71,6 +71,5 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Frontend folder (separate frontend exists outside Backend)
-frontend/
+# Frontend folder inside Backend (separate frontend exists outside Backend)
 Backend/frontend/

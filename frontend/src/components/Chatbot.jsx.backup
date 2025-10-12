@@ -1,0 +1,552 @@
+
+// NOTE: In a real environment, PDF.js and html2canvas scripts would be loaded globally 
+// in index.html to be accessible via window.pdfjsLib and window.html2canvas.
+// The same applies to the Groq API key which is assumed to be valid here.
+
+// --- Global Configuration ---
+const MODEL_NAME = "llama-3.1-8b-instant"; 
+// IMPORTANT: Replace with your actual Groq Key if running locally outside this environment.
+const apiKey = import.meta.env.VITE_GROQ_API_KEY || "your-api-key-here"; 
+const apiUrl = `https://api.groq.com/openai/v1/chat/completions`; 
+
+// Ensure window.pdfjsLib worker is set for environments that load the library
+if (typeof window.pdfjsLib !== 'undefined') {
+    const pdfjsWorker = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+}
+
+// --- Custom Tailwind Colors for Theme Coherence ---
+// These styles are integrated into the JSX classNames or inline styles below.
+const colors = {
+    'primary-blue': '#6366F1',
+    'primary-blue-dark': '#4F46E5',
+    'soft-gray': '#F9FAFB',
+    'dark-text': '#111827',
+    'accent-green': '#10B981',
+    'accent-purple': '#A855F7',
+    'accent-purple-dark': '#9333EA',
+    'gradient-start': '#6366F1',
+    'gradient-end': '#A855F7',
+};
+
+// --- Core Logic Component ---
+
+export default function UniPrepAssistant() {
+    const [task, setTask] = useState("Summarization");
+    const [userInput, setUserInput] = useState("");
+    const [fileContent, setFileContent] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const [responseSummary, setResponseSummary] = useState("");
+    const [mindMapHtml, setMindMapHtml] = useState(null);
+    const [inputLabelText, setInputLabelText] = useState("Paste Text, Topic, or Question.");
+
+    const fileUploadRef = useRef(null);
+
+    // --- Utility Functions (Adapted from HTML JavaScript) ---
+
+    const getSystemInstruction = (currentTask) => {
+        // This is based on the logic from the HTML file, ensuring prompt structure is strict.
+        switch (currentTask) {
+            case 'Question analysis':
+                return "You are an expert academic tutor. Analyze the following question or topic. Your response must be highly structured. First, identify the core subject and concepts. Second, outline a structured, step-by-step approach to answering it (e.g., Introduction, Body Points, Conclusion). Third, list 3 key academic terms the student must define to provide a complete answer. Format the response clearly using markdown headings and lists.";
+            case 'Study plan generation':
+                return "You are a highly efficient academic planner. Create a detailed, 5-day structured study plan based on the user's subject and stated goals. The plan must include daily focus areas, estimated time blocks, and a suggested review method for each day. Respond in a clear, formatted markdown list or table.";
+            case 'Summarization':
+                return "You are a professional research assistant. Process the user's provided text. Your response MUST have two distinct parts, separated by a markdown horizontal rule (---) exactly on its own line: \n\nPART 1 (Summary): Condense the text into a single, comprehensive paragraph (maximum 150 words). Maintain a formal, academic tone.\n\nPART 2 (Mind Map Outline): Create a concise, hierarchical outline covering ALL the provided points, using non-redundant, highly memorable key phrases (4-6 words max per point) to represent a professional study diagram. Use the main topic as the first bullet point (* Main Topic: [Main Subject]), and use **nested markdown lists (using * and consistent indentation of 2 spaces)** for 3-5 main features and their sub-points. The entire structure must be composed ONLY of these nested markdown lists.";
+            case 'Quiz creation':
+                return "You are an assessment specialist. Generate exactly 5 challenging multiple-choice questions (MCQs) related to the user's topic. Each question must have 4 distinct options (A, B, C, D). Crucially, provide the correct answer key clearly at the very end of the response, separated by a markdown horizontal rule (---).";
+            case 'Doubt explanation':
+                return "You are a patient and knowledgeable professor. Explain the user's doubt or complex concept in clear, simple terms. Use one effective analogy or real-world example to clarify the core idea. Keep the tone encouraging, supportive, and easy to understand.";
+            case 'Translation':
+                return "You are a rapid and accurate translation expert. Identify the source language and the target language, and provide the resulting translation. If no target language is specified, translate the text into English. Respond in the format: 'Source Language: [Language]\nTarget Language: [Language]\n\n[Translation Result]'.";
+            case 'Career guidance':
+                return "You are a professional university and career counselor. Provide informed career guidance based on the user's query (field/interest). Suggest relevant university majors/degrees, necessary technical and soft skills, and 3 current job market trends or roles related to the interest. Note: The AI cannot access real-time search, so its advice is based on general knowledge.";
+            default:
+                return "You are a helpful and versatile university preparation assistant. Please address the user's request accurately and professionally.";
+        }
+    };
+
+    const exponentialBackoffFetch = useCallback(async (url, options, maxRetries = 5) => {
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                const response = await fetch(url, options);
+                if (response.ok) return response;
+                
+                if (response.status === 429 && attempt < maxRetries - 1) {
+                    const delay = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
+                }
+                throw new Error(`API call failed with status: ${response.status} (${response.statusText}). Check API key/model.`);
+            } catch (error) {
+                if (attempt === maxRetries - 1) throw error;
+                const delay = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }, []);
+
+    const extractTextFromPDF = async (file) => {
+        if (typeof window.pdfjsLib === 'undefined') {
+            throw new Error("PDF.js library is not available. Ensure scripts are loaded.");
+        }
+        
+        const arrayBuffer = await file.arrayBuffer();
+        const loadingTask = window.pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+        
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str).join(' ');
+            fullText += pageText + '\n\n';
+        }
+        return fullText.trim();
+    };
+
+    const convertMarkdownToMindMapHTML = (markdownText) => {
+        const lines = markdownText.split('\n').filter(line => line.trim().startsWith('*'));
+        if (lines.length === 0) return markdownText;
+
+        const centerTopicMatch = lines[0].match(/^\s*\*\s*(.+)/);
+        const centerTopic = centerTopicMatch ? centerTopicMatch[1] : 'Main Topic';
+        
+        let html = `<div class="mind-map-center" style="background: linear-gradient(135deg, ${colors['gradient-start']} 0%, ${colors['gradient-end']} 100%); box-shadow: 0 0 0 4px #E0E7FF, 0 10px 20px rgba(99, 102, 241, 0.4); color: white; padding: 1rem 1.5rem; border-radius: 0.75rem; font-weight: bold; font-size: 1.1rem; text-align: center;">${centerTopic}</div>`;
+        
+        const listItems = lines.slice(1);
+        let currentIndent = 0;
+        const tagStack = []; 
+
+        for (const line of listItems) {
+            const match = line.match(/^(\s*)\* (.+)/);
+            if (!match) continue;
+
+            const indentSpaces = match[1].length;
+            const indentLevel = indentSpaces / 2;
+            const content = match[2].trim();
+            
+            while (indentLevel < currentIndent) {
+                html += `</li></ul>`;
+                tagStack.pop();
+                currentIndent -= 1;
+            }
+            
+            if (indentLevel > currentIndent) {
+                if (html.endsWith('</div>')) {
+                    html = html.slice(0, -6); 
+                    html += `</div>`; 
+                }
+                html += `<ul class="mind-map-list" style="padding-left: 25px; position: relative;">`;
+                tagStack.push('ul');
+            }
+            
+            if (html.endsWith('</div>')) {
+                html += '</li>'; 
+            }
+            
+            // Render the node with inline styles for professional flow chart look
+            const nodeHtml = `
+                <li style="position: relative; margin: 1rem 0; padding-left: 20px;">
+                    <div class="mind-map-node" style="border: 2px solid ${colors['accent-purple']}; box-shadow: 0 4px 8px rgba(168, 85, 247, 0.25); background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%); padding: 0.75rem 1rem; border-radius: 0.5rem; font-weight: 500;">
+                        ${content}
+                    </div>
+                </li>`;
+            html += nodeHtml;
+            currentIndent = indentLevel;
+        }
+
+        while (tagStack.length > 0) {
+            html += '</li></ul>';
+            tagStack.pop();
+        }
+        
+        html = html.replace(/<\/ul>$/, '');
+        html = html.replace(/<li>$/, '');
+        
+        // Inject the CSS for the lines (since Tailwind doesn't handle pseudo-elements easily)
+        const lineStyles = `
+            <style>
+                .mind-map-list:not(:first-child)::before {
+                    content: ''; position: absolute; left: 12px; top: 0; bottom: 0; width: 3px; background-color: #DBEAFE; z-index: 0;
+                }
+                .mind-map-list > li::before {
+                    content: ''; position: absolute; left: 12px; top: 50%; width: 20px; height: 3px; background-color: ${colors['accent-purple']}; border-radius: 2px; z-index: 1;
+                }
+            </style>
+        `;
+        
+        return lineStyles + html;
+    };
+
+    // --- State Management and Handlers ---
+
+    const resetFileState = () => {
+        setFileContent("");
+        if (fileUploadRef.current) fileUploadRef.current.value = '';
+        setUserInput("");
+        setInputLabelText("Paste Text, Topic, or Question.");
+    };
+
+    const processFileContent = async (file, type) => {
+        setInputLabelText(`File Selected: ${file.name} (Reading ${type.toUpperCase()}...)`);
+        setIsLoading(true);
+        setUserInput(''); // Clear manual input when file is selected
+
+        try {
+            let extractedText = '';
+            if (type === 'txt') {
+                const reader = new FileReader();
+                extractedText = await new Promise((resolve) => {
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.readAsText(file);
+                });
+            } else if (type === 'pdf') {
+                extractedText = await extractTextFromPDF(file);
+            }
+
+            const limitedContent = extractedText.substring(0, 10000); // Limit context
+            setFileContent(limitedContent);
+            setInputLabelText(`File Loaded: ${file.name} (${limitedContent.length} chars)`);
+
+        } catch (error) {
+            setInputLabelText(`<span class="text-red-600 font-bold">Extraction Error:</span> Failed to read ${type.toUpperCase()}. Try pasting text.`);
+            console.error(`Error processing ${type} file:`, error);
+            setFileContent("");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleFileChange = (e) => {
+        resetFileState();
+        const files = e.target.files;
+        if (files.length === 0) return;
+
+        const file = files[0];
+        const fileType = file.type;
+
+        if (fileType === 'application/pdf') {
+            processFileContent(file, 'pdf');
+        } else if (fileType === 'text/plain') {
+            processFileContent(file, 'txt');
+        } else {
+            setInputLabelText(`<span class="text-red-600 font-bold">Error:</span> Unsupported file type. Please use a .txt or .pdf file.`);
+        }
+    };
+
+    const handleSend = async () => {
+        const prompt = (fileContent || userInput).trim(); 
+
+        setMindMapHtml(null);
+        setResponseSummary('');
+        
+        if (!prompt) {
+            setResponseSummary("Please enter text or upload a file before generating!");
+            return;
+        }
+        if (!apiKey) {
+            setResponseSummary("Error: API Key is missing. Please check the code.");
+            return;
+        }
+
+        setIsLoading(true);
+        const currentTask = task;
+
+        const systemInstruction = getSystemInstruction(currentTask);
+        const userQuery = `${currentTask}: ${prompt}`;
+        
+        const payload = {
+            model: MODEL_NAME,
+            messages: [
+                { role: "system", content: systemInstruction },
+                { role: "user", content: userQuery }
+            ],
+            temperature: 0.7, 
+        };
+
+        const options = {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}` 
+            },
+            body: JSON.stringify(payload)
+        };
+
+        try {
+            const response = await exponentialBackoffFetch(apiUrl, options);
+            const result = await response.json();
+
+            const candidate = result.choices?.[0]; 
+
+            if (candidate && candidate.message?.content) {
+                const fullText = candidate.message.content; 
+                
+                if (currentTask === 'Summarization') {
+                    const parts = fullText.split('---');
+                    if (parts.length >= 2) {
+                        setResponseSummary(parts[0].trim());
+                        const mindMapOutline = parts.slice(1).join('---').trim();
+                        setMindMapHtml(convertMarkdownToMindMapHTML(mindMapOutline));
+                    } else {
+                        setResponseSummary(fullText);
+                        setMindMapHtml(null);
+                    }
+                } else {
+                    setResponseSummary(fullText);
+                    setMindMapHtml(null);
+                }
+            } else if (result.error) {
+                setResponseSummary(`API Error: ${result.error.message}. Check console.`);
+            } else {
+                setResponseSummary("Error: Could not generate content. Check console for details.");
+            }
+        } catch (error) {
+            setResponseSummary(`A network error occurred: ${error.message}.`);
+        } finally {
+            setIsLoading(false);
+            resetFileState();
+        }
+    };
+
+    const downloadMindMap = () => {
+        const container = document.getElementById('mindMapContainer');
+        if (!container || !mindMapHtml || typeof window.html2canvas === 'undefined') {
+            alert("Please generate the study diagram first or ensure html2canvas is loaded.");
+            return;
+        }
+
+        window.html2canvas(container, {
+            scale: 2, 
+            backgroundColor: '#ffffff', 
+            useCORS: true 
+        }).then(canvas => {
+            const imageURL = canvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = imageURL;
+            a.download = 'UniPrep_StudyDiagram.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }).catch(err => {
+            console.error("Error generating image:", err);
+            alert("Could not generate PNG image. Check console.");
+        });
+    };
+
+    useEffect(() => {
+        setResponseSummary("Welcome! PDF extraction is now supported! Select a task and input your data to begin.");
+    }, []);
+
+    const isSummarizationTask = task === 'Summarization';
+    const isReadyToSend = (userInput.trim() || fileContent) && !isLoading;
+    const isMindMapAvailable = isSummarizationTask && mindMapHtml;
+
+    // --- JSX Rendering ---
+
+    return (
+        <div className="flex flex-col h-screen w-full max-w-6xl mx-auto font-sans bg-gray-50">
+            
+            {/* Header with Gradient - Fixed */}
+            <header className="relative overflow-hidden p-6 text-white flex-shrink-0" style={{ 
+                background: `linear-gradient(135deg, ${colors['gradient-start']} 0%, ${colors['gradient-end']} 100%)`,
+                boxShadow: '0 4px 20px -5px rgba(99, 102, 241, 0.4)'
+            }}>
+                <div className="relative z-10">
+                    <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-white bg-opacity-20 rounded-xl flex items-center justify-center text-2xl backdrop-blur-sm">
+                            🎓
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold tracking-tight">UniPrep AI Assistant</h1>
+                            <p className="text-xs opacity-90">Powered by Groq Llama 3.1</p>
+                        </div>
+                    </div>
+                </div>
+                {/* Decorative elements */}
+                <div className="absolute top-0 right-0 w-40 h-40 bg-white opacity-5 rounded-full -mr-20 -mt-20"></div>
+            </header>
+
+            {/* Main Content Area - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6" style={{ maxHeight: 'calc(100vh - 400px)' }}>
+
+                {/* Response Area */}
+                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+                    <h2 className="text-xl font-bold mb-4 flex items-center" style={{ color: colors['primary-blue'] }}>
+                        <span className="mr-2">🤖</span>
+                        AI Response
+                    </h2>
+                    
+                    {/* Summary Output */}
+                    <div 
+                        id="responseArea" 
+                        className="min-h-[150px] max-h-[300px] overflow-y-auto p-5 border-2 rounded-xl text-gray-700 whitespace-pre-wrap mb-4 shadow-inner leading-relaxed"
+                        style={{ 
+                            backgroundColor: '#FAFBFC',
+                            borderColor: '#E5E7EB'
+                        }}
+                    >
+                        {responseSummary || "Your AI-generated response will appear here..."}
+                    </div>
+
+                    {/* Mind Map Visualization Area */}
+                    <div id="mindMapVisualization" className={isMindMapAvailable ? '' : 'hidden'}>
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-lg font-bold flex items-center" style={{ color: colors['accent-purple'] }}>
+                                <span className="mr-2">🧠</span>
+                                Visual Study Diagram
+                            </h3>
+                            <button 
+                                id="downloadButton" 
+                                onClick={downloadMindMap} 
+                                className="px-4 py-2 text-white font-semibold rounded-lg shadow-md transition-all duration-200 ease-in-out hover:shadow-lg transform hover:-translate-y-0.5 flex items-center space-x-2 text-sm"
+                                style={{ 
+                                    background: `linear-gradient(135deg, ${colors['accent-green']} 0%, #059669 100%)`,
+                                }}
+                                disabled={isLoading}
+                            >
+                                <span>⬇️</span>
+                                <span>Download PNG</span>
+                            </button>
+                        </div>
+                        <div 
+                            id="mindMapContainer" 
+                            className="mind-map-output"
+                            dangerouslySetInnerHTML={{ __html: mindMapHtml }}
+                            style={{ 
+                                backgroundColor: '#ffffff',
+                                border: '2px solid #E5E7EB',
+                                minHeight: '200px',
+                                maxHeight: '400px',
+                                padding: '2rem',
+                                overflow: 'auto',
+                                borderRadius: '1rem',
+                                lineHeight: '1.6',
+                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+                            }}
+                        >
+                        </div>
+                    </div>
+
+                    <div className="mt-3 text-xs text-gray-500 flex items-center">
+                        <span className="mr-1">ℹ️</span>
+                        <span>Real-time search/citations are not available</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Input Area - Fixed at Bottom */}
+            <div className="flex-shrink-0 bg-white border-t-2 border-gray-200 p-6 shadow-2xl" style={{ boxShadow: '0 -10px 30px -10px rgba(0, 0, 0, 0.1)' }}>
+                <div className="max-w-6xl mx-auto">
+                    <div className="grid md:grid-cols-4 gap-4 mb-4">
+                        
+                        {/* Task Dropdown */}
+                        <div className="md:col-span-1">
+                            <label htmlFor="taskSelect" className="block text-xs font-semibold text-gray-700 mb-2 flex items-center">
+                                <span className="mr-1">🎯</span>
+                                AI Task
+                            </label>
+                            <select 
+                                id="taskSelect" 
+                                value={task}
+                                onChange={(e) => setTask(e.target.value)}
+                                className="w-full p-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-offset-1 transition-all duration-200 ease-in-out shadow-sm hover:border-indigo-300 bg-white font-medium text-sm text-gray-700"
+                                style={{ 
+                                    borderColor: '#E5E7EB',
+                                    outline: 'none'
+                                }}
+                                onFocus={(e) => e.target.style.borderColor = colors['primary-blue']}
+                                onBlur={(e) => e.target.style.borderColor = '#E5E7EB'}
+                                disabled={isLoading}
+                            >
+                                <option value="Question analysis">📝 Question Analysis</option>
+                                <option value="Study plan generation">📅 Study Plan</option>
+                                <option value="Summarization">📊 Summarization</option>
+                                <option value="Quiz creation">❓ Quiz (5 MCQs)</option>
+                                <option value="Doubt explanation">💡 Doubt Explanation</option>
+                                <option value="Translation">🌐 Translation</option>
+                                <option value="Career guidance">🎓 Career Guidance</option>
+                            </select>
+                        </div>
+
+                        {/* Input Area */}
+                        <div className="md:col-span-2">
+                            <label className="block text-xs font-semibold text-gray-700 mb-2 flex items-center">
+                                <span className="mr-1">📄</span>
+                                Your Input
+                            </label>
+                            <textarea 
+                                id="userInput" 
+                                rows="2" 
+                                placeholder="✍️ Type your question or paste content here..." 
+                                value={userInput}
+                                onChange={(e) => {
+                                    setUserInput(e.target.value);
+                                    setFileContent('');
+                                    if (fileUploadRef.current) fileUploadRef.current.value = '';
+                                    setInputLabelText("Paste Text, Topic, or Question.");
+                                }}
+                                disabled={isLoading || !!fileContent}
+                                className={`w-full p-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-offset-1 resize-none transition-all duration-200 ease-in-out shadow-sm hover:border-indigo-300 text-sm ${isLoading ? 'opacity-60 bg-gray-50 cursor-wait' : 'bg-white'}`}
+                                style={{ 
+                                    borderColor: '#E5E7EB',
+                                    outline: 'none'
+                                }}
+                                onFocus={(e) => e.target.style.borderColor = colors['primary-blue']}
+                                onBlur={(e) => e.target.style.borderColor = '#E5E7EB'}
+                            />
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="md:col-span-1 flex flex-col justify-end space-y-2">
+                            <input 
+                                type="file" 
+                                id="fileUpload" 
+                                accept=".txt,.pdf" 
+                                className="hidden" 
+                                onChange={handleFileChange}
+                                ref={fileUploadRef}
+                            />
+                            <button 
+                                onClick={() => fileUploadRef.current.click()} 
+                                className="text-white px-3 py-2 rounded-lg shadow-md transition-all duration-200 ease-in-out font-semibold text-xs hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-1"
+                                style={{ 
+                                    background: `linear-gradient(135deg, ${colors['accent-purple']} 0%, ${colors['accent-purple-dark']} 100%)`,
+                                }}
+                                disabled={isLoading}
+                            >
+                                <span>📎</span>
+                                <span>Upload PDF/TXT</span>
+                            </button>
+                            <button 
+                                id="sendButton" 
+                                onClick={handleSend} 
+                                className="px-4 py-2 text-white font-bold rounded-lg shadow-lg transition-all duration-200 ease-in-out hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
+                                style={{ 
+                                    background: isReadyToSend ? `linear-gradient(135deg, ${colors['gradient-start']} 0%, ${colors['gradient-end']} 100%)` : '#9CA3AF',
+                                }}
+                                disabled={!isReadyToSend}
+                            >
+                                {isLoading ? (
+                                    <div className="flex items-center justify-center space-x-2">
+                                        <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                                        <span>Generating...</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center justify-center space-x-1">
+                                        <span>✨</span>
+                                        <span>Generate</span>
+                                    </div>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                    {/* File Status */}
+                    <div className="text-xs mt-2" dangerouslySetInnerHTML={{ __html: inputLabelText }}></div>
+                </div>
+
+            </div>
+        </div>
+    );
+}
