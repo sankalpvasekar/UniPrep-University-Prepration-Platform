@@ -12,6 +12,7 @@ from .serializers import (
     QuestionSerializer, PaperSerializer, VideoSerializer,
     UserProfileSerializer, RegisterSerializer, UserSerializer
 )
+from .ai_service import generate_ai_answer, test_gemini_connection
 import numpy as np
 # Import analyzer with error handling
 try:
@@ -73,18 +74,26 @@ def register(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login(request):
-    """User login endpoint"""
-    email = request.data.get('email')
+    """User login endpoint - supports both username and email login"""
+    login_field = request.data.get('email') or request.data.get('username')
     password = request.data.get('password')
     
-    if not email or not password:
+    if not login_field or not password:
         return Response(
-            {'error': 'Please provide both email and password'},
+            {'error': 'Please provide both email/username and password'},
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    # Authenticate using email as username
-    user = authenticate(username=email, password=password)
+    # Try to authenticate using the provided field as username first
+    user = authenticate(username=login_field, password=password)
+    
+    # If that fails, try to find user by email and authenticate with username
+    if not user:
+        try:
+            user_by_email = User.objects.get(email=login_field)
+            user = authenticate(username=user_by_email.username, password=password)
+        except User.DoesNotExist:
+            pass
     
     if user:
         token, created = Token.objects.get_or_create(user=user)
@@ -277,6 +286,87 @@ def dataset_subjects(request):
     except Exception as e:
         return Response(
             {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def ask_ai(request):
+    """
+    AI-powered question answering endpoint using Gemini API
+    """
+    try:
+        question = request.data.get('question', '').strip()
+        subject_id = request.data.get('subject_id', '')
+        difficulty = request.data.get('difficulty', '')
+        marks = request.data.get('marks', '')
+        
+        if not question:
+            return Response(
+                {'success': False, 'error': 'Question is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get subject context if subject_id is provided
+        subject_context = None
+        if subject_id:
+            try:
+                # Try to get subject from database first (only if it's a numeric ID)
+                if subject_id.isdigit():
+                    subject = Subject.objects.get(id=int(subject_id))
+                    subject_context = f"{subject.name} ({subject.code})"
+                else:
+                    # If it's a string ID, use it as context
+                    subject_context = subject_id.replace('-', ' ').title()
+            except (Subject.DoesNotExist, ValueError):
+                # If not in database or not numeric, use the subject_id as context
+                subject_context = subject_id.replace('-', ' ').title()
+        
+        # Generate AI answer
+        result = generate_ai_answer(
+            question=question,
+            subject_context=subject_context,
+            difficulty=difficulty,
+            marks=marks
+        )
+        
+        if result['success']:
+            return Response({
+                'success': True,
+                'answer': result['answer'],
+                'model': result.get('model', 'gemini-flash-latest'),
+                'question': question,
+                'subject_context': subject_context
+            })
+        else:
+            return Response({
+                'success': False,
+                'error': result['error']
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    except Exception as e:
+        return Response(
+            {'success': False, 'error': f'Server error: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def test_ai_connection(request):
+    """
+    Test endpoint to verify AI service connection
+    """
+    try:
+        result = test_gemini_connection()
+        if result['success']:
+            return Response(result)
+        else:
+            return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        return Response(
+            {'success': False, 'error': f'Test failed: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
@@ -640,5 +730,86 @@ def ai_questions(request, subject_id):
     except Exception as e:
         return Response(
             {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def ask_ai(request):
+    """
+    AI-powered question answering endpoint using Gemini API
+    """
+    try:
+        question = request.data.get('question', '').strip()
+        subject_id = request.data.get('subject_id', '')
+        difficulty = request.data.get('difficulty', '')
+        marks = request.data.get('marks', '')
+        
+        if not question:
+            return Response(
+                {'success': False, 'error': 'Question is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get subject context if subject_id is provided
+        subject_context = None
+        if subject_id:
+            try:
+                # Try to get subject from database first (only if it's a numeric ID)
+                if subject_id.isdigit():
+                    subject = Subject.objects.get(id=int(subject_id))
+                    subject_context = f"{subject.name} ({subject.code})"
+                else:
+                    # If it's a string ID, use it as context
+                    subject_context = subject_id.replace('-', ' ').title()
+            except (Subject.DoesNotExist, ValueError):
+                # If not in database or not numeric, use the subject_id as context
+                subject_context = subject_id.replace('-', ' ').title()
+        
+        # Generate AI answer
+        result = generate_ai_answer(
+            question=question,
+            subject_context=subject_context,
+            difficulty=difficulty,
+            marks=marks
+        )
+        
+        if result['success']:
+            return Response({
+                'success': True,
+                'answer': result['answer'],
+                'model': result.get('model', 'gemini-flash-latest'),
+                'question': question,
+                'subject_context': subject_context
+            })
+        else:
+            return Response({
+                'success': False,
+                'error': result['error']
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    except Exception as e:
+        return Response(
+            {'success': False, 'error': f'Server error: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def test_ai_connection(request):
+    """
+    Test endpoint to verify AI service connection
+    """
+    try:
+        result = test_gemini_connection()
+        if result['success']:
+            return Response(result)
+        else:
+            return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        return Response(
+            {'success': False, 'error': f'Test failed: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )

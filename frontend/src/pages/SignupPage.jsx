@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
+    username: "",
     firstName: "",
     lastName: "",
     email: "",
@@ -31,6 +32,12 @@ export default function SignupPage() {
     setError("");
 
     // Validation
+    if (!formData.username || formData.username.length < 3) {
+      setError("Username must be at least 3 characters long");
+      setIsLoading(false);
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
       setIsLoading(false);
@@ -50,6 +57,7 @@ export default function SignupPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          username: formData.username,
           email: formData.email,
           password: formData.password,
           confirm_password: formData.confirmPassword,
@@ -135,6 +143,33 @@ export default function SignupPage() {
                   onBlur={() => setFocusedField('')}
                   className={`w-full px-4 py-3 border-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-0 ${
                     focusedField === 'lastName' 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Username Field */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Username</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className={`w-5 h-5 transition-colors ${focusedField === 'username' ? 'text-blue-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  name="username"
+                  placeholder="johndoe123"
+                  value={formData.username}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField('username')}
+                  onBlur={() => setFocusedField('')}
+                  className={`w-full pl-10 pr-4 py-3 border-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-0 ${
+                    focusedField === 'username' 
                       ? 'border-blue-500 bg-blue-50' 
                       : 'border-gray-200 hover:border-gray-300'
                   }`}

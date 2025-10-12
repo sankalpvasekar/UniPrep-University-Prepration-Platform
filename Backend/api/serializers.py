@@ -22,10 +22,16 @@ class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
     confirm_password = serializers.CharField(write_only=True)
     email = serializers.EmailField(required=True)
+    username = serializers.CharField(required=True, min_length=3, max_length=30)
     
     class Meta:
         model = User
-        fields = ['email', 'password', 'confirm_password', 'first_name', 'last_name']
+        fields = ['username', 'email', 'password', 'confirm_password', 'first_name', 'last_name']
+    
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("A user with this username already exists.")
+        return value
     
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
@@ -41,7 +47,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         validated_data.pop('confirm_password')
         
         user = User.objects.create_user(
-            username=validated_data['email'],
+            username=validated_data['username'],
             email=validated_data['email'],
             first_name=validated_data.get('first_name', ''),
             last_name=validated_data.get('last_name', ''),

@@ -36,6 +36,10 @@ urlpatterns = [
     # Chatbot endpoint
     path('chat/', chat_with_ai, name='chat'),
     
+    # AI endpoints
+    path('ask-ai/', views.ask_ai, name='ask_ai'),
+    path('test-ai/', views.test_ai_connection, name='test_ai_connection'),
+    
     # API endpoints
     path('', include(router.urls)),
 ]
