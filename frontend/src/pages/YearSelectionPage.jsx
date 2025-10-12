@@ -7,6 +7,17 @@ export default function YearSelectionPage() {
   const [hoveredCard, setHoveredCard] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
+  // Close profile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showProfileMenu && !event.target.closest('.profile-menu-container')) {
+        setShowProfileMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showProfileMenu]);
+
   // Read logged-in user from localStorage
   const { displayName, initials, username } = useMemo(() => {
     try {
@@ -46,9 +57,9 @@ export default function YearSelectionPage() {
       color: "from-blue-500 to-cyan-500",
       description: "Algorithms, Data Structures, Software Engineering"
     },
-    ece: {
+    entc: {
       name: "Electronics and Telecommunication Engineering",
-      icon: "⚡",
+      icon: "📡",
       color: "from-purple-500 to-pink-500",
       description: "Circuit Design, Digital Systems, Communication"
     },
@@ -82,7 +93,7 @@ export default function YearSelectionPage() {
     const fetchYears = async () => {
       try {
         setLoadingYears(true);
-        const branchMap = { cse: 'CSE', ece: 'ECE', mech: 'MECH', civil: 'CIVIL', electrical: 'EE' };
+        const branchMap = { cse: 'cse', entc: 'entc', mech: 'mech', civil: 'civil', electrical: 'electrical' };
         const code = branchMap[branchId] || 'CSE';
         const res = await fetch(`http://localhost:8000/api/dataset/years/?branch=${encodeURIComponent(code)}`);
         const data = await res.json();
@@ -141,7 +152,7 @@ export default function YearSelectionPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 sticky top-0 z-10">
+      <header className="bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Link to="/dashboard" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
@@ -154,7 +165,7 @@ export default function YearSelectionPage() {
             </Link>
 
             {/* User Profile Menu */}
-            <div className="relative">
+            <div className="relative profile-menu-container">
               <button
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
                 className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -172,7 +183,7 @@ export default function YearSelectionPage() {
               </button>
 
               {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-[60]">
                   <div className="px-4 py-2 border-b border-gray-100">
                     <p className="text-sm font-medium text-gray-900">{displayName}</p>
                     <p className="text-xs text-gray-500">{displayName}</p>
@@ -203,7 +214,7 @@ export default function YearSelectionPage() {
       </header>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-6 py-8 pt-24">
         {/* Breadcrumb Navigation */}
         <div className="mb-8">
           <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-4">

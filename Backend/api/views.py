@@ -23,6 +23,17 @@ except ImportError as e:
     def get_analyzer():
         return None
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def health_check(request):
+    """Health check endpoint to verify server is running and dataset is loaded."""
+    return Response({
+        'status': 'ok',
+        'server': 'running',
+        'message': 'Backend server is running'
+    })
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def analyzer_reload(request):
@@ -228,8 +239,20 @@ def dataset_subjects(request):
                 'source': 'dataset_not_ready'
             })
         
-        branch = request.query_params.get('branch', None)
+        branch_param = request.query_params.get('branch', None)
         year = request.query_params.get('year', None)
+        
+        # Map frontend branch IDs to dataset branch codes
+        branch_to_code = {
+            'cse': 'CSE',
+            'mech': 'ME',
+            'entc': 'ENTC',
+            'civil': 'CIVIL',
+            'electrical': 'ELECTRICAL',
+        }
+        
+        # Convert branch ID to uppercase code for analyzer
+        branch = branch_to_code.get(branch_param.lower() if branch_param else None, branch_param)
         
         subjects = analyzer.get_subjects_from_csv(branch=branch, year=year)
         
@@ -417,7 +440,7 @@ def dataset_past_papers(request, subject_id):
 def dataset_years(request):
     """
     Get available study years (FY/SY/TY/Final Year) from CSV for a branch.
-    Query params: branch=CSE|ECE|MECH|CIVIL|EE (optional)
+    Query params: branch (optional)
     """
     try:
         if not ANALYZER_AVAILABLE:
@@ -425,7 +448,19 @@ def dataset_years(request):
         analyzer = get_analyzer()
         if not analyzer or not analyzer.is_ready:
             return Response({'years': [], 'source': 'dataset_not_ready'})
-        branch = request.query_params.get('branch')
+        
+        branch_param = request.query_params.get('branch')
+        
+        # Map frontend branch IDs to dataset branch codes
+        branch_to_code = {
+            'cse': 'CSE',
+            'mech': 'ME',
+            'entc': 'ENTC',
+            'civil': 'CIVIL',
+            'electrical': 'ELECTRICAL',
+        }
+        
+        branch = branch_to_code.get(branch_param.lower() if branch_param else None, branch_param)
         years = analyzer.get_years_from_csv(branch=branch)
         return Response({'years': years, 'source': 'dataset'})
     except Exception as e:
@@ -446,14 +481,21 @@ def dataset_branches(request):
         if not analyzer or not analyzer.is_ready:
             return Response({'branches': [], 'source': 'dataset_not_ready'})
 
-        raw = analyzer.get_branches_from_csv()  # e.g., ['CSE','ECE','MECH','CIVIL','EE']
+        raw = analyzer.get_branches_from_csv()  # e.g., ['CSE','ENTC','ME','CIVIL','ELECTRICAL']
         # Map to frontend-friendly IDs
         id_map = {
-            'EE': 'electrical',
+            'ELECTRICAL': 'electrical',
             'CIVIL': 'civil',
-            'MECH': 'mech',
-            'ECE': 'ece',
+            'ME': 'mech',
+            'ENTC': 'entc',
             'CSE': 'cse',
+        }
+        name_map = {
+            'cse': 'Computer Science Engineering',
+            'entc': 'Electronics and Telecommunication Engineering',
+            'mech': 'Mechanical Engineering',
+            'civil': 'Civil Engineering',
+            'electrical': 'Electrical Engineering',
         }
         palette = [
             'from-blue-500 to-cyan-500',
@@ -461,21 +503,14 @@ def dataset_branches(request):
             'from-green-500 to-teal-500',
             'from-orange-500 to-red-500',
             'from-yellow-500 to-orange-500',
-            'from-indigo-500 to-purple-500',
         ]
-        emoji = ['💻','⚡','🔧','🏗️','⚡','📚']
+        emoji = ['💻','📡','🔧','🏗️','⚡']
         branches = []
         for i, b in enumerate(raw):
             bid = id_map.get(b, b.lower())
             branches.append({
                 'id': bid,
-                'name': {
-                    'cse': 'Computer Science Engineering',
-                    'ece': 'Electronics and Telecommunication Engineering',
-                    'mech': 'Mechanical Engineering',
-                    'civil': 'Civil Engineering',
-                    'electrical': 'Electrical Engineering',
-                }.get(bid, b),
+                'name': name_map.get(bid, b),
                 'icon': emoji[i % len(emoji)],
                 'color': palette[i % len(palette)],
             })

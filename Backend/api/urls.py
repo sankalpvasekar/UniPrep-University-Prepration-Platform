@@ -11,6 +11,9 @@ router.register(r'papers', views.PaperViewSet)
 router.register(r'videos', views.VideoViewSet)
 
 urlpatterns = [
+    # Health check
+    path('health/', views.health_check, name='health_check'),
+    
     # Maintenance
     path('reload/', views.analyzer_reload, name='analyzer_reload'),
 

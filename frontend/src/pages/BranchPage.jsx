@@ -37,10 +37,10 @@ export default function BranchPage() {
               stats: { subjects: 5, students: 0 },
             },
             {
-              id: "ece",
+              id: "entc",
               name: "Electronics and Telecommunication Engineering",
               description: "Circuit Design, Digital Systems, Communication",
-              icon: "⚡",
+              icon: "📡",
               color: "from-purple-500 to-pink-500",
               stats: { subjects: 5, students: 0 },
             },
@@ -74,7 +74,7 @@ export default function BranchPage() {
         if (!cancelled) {
           setBranches([
             { id: "cse", name: "Computer Science Engineering", description: "Algorithms, Data Structures, Software Engineering", icon: "💻", color: "from-blue-500 to-cyan-500", stats: { subjects: 5, students: 0 } },
-            { id: "ece", name: "Electronics and Telecommunication Engineering", description: "Circuit Design, Digital Systems, Communication", icon: "⚡", color: "from-purple-500 to-pink-500", stats: { subjects: 5, students: 0 } },
+            { id: "entc", name: "Electronics and Telecommunication Engineering", description: "Circuit Design, Digital Systems, Communication", icon: "📡", color: "from-purple-500 to-pink-500", stats: { subjects: 5, students: 0 } },
             { id: "mech", name: "Mechanical Engineering", description: "Thermodynamics, Machine Design, Manufacturing", icon: "🔧", color: "from-green-500 to-teal-500", stats: { subjects: 5, students: 0 } },
             { id: "civil", name: "Civil Engineering", description: "Structural Design, Construction, Transportation", icon: "🏗️", color: "from-orange-500 to-red-500", stats: { subjects: 5, students: 0 } },
             { id: "electrical", name: "Electrical Engineering", description: "Power Systems, Control Systems, Electronics", icon: "⚡", color: "from-yellow-500 to-orange-500", stats: { subjects: 5, students: 0 } },
@@ -91,7 +91,7 @@ export default function BranchPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100">
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 sticky top-0 z-10">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">

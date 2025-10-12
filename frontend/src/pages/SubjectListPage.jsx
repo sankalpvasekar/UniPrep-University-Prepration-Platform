@@ -44,7 +44,7 @@ export default function SubjectListPage() {
   // Branch metadata (restored)
   const branchData = {
     cse: { name: "Computer Science Engineering", icon: "💻", color: "from-blue-500 to-cyan-500" },
-    ece: { name: "Electronics and Telecommunication Engineering", icon: "⚡", color: "from-purple-500 to-pink-500" },
+    entc: { name: "Electronics and Telecommunication Engineering", icon: "📡", color: "from-purple-500 to-pink-500" },
     mech: { name: "Mechanical Engineering", icon: "🔧", color: "from-green-500 to-teal-500" },
     civil: { name: "Civil Engineering", icon: "🏗️", color: "from-orange-500 to-red-500" },
     electrical: { name: "Electrical Engineering", icon: "⚡", color: "from-yellow-500 to-orange-500" },
@@ -67,11 +67,11 @@ export default function SubjectListPage() {
     const fetchSubjects = async () => {
       try {
         const branchMap = {
-          'cse': 'CSE',
-          'ece': 'ECE',
-          'mech': 'MECH',
-          'civil': 'CIVIL',
-          'electrical': 'EE'
+          'cse': 'cse',
+          'entc': 'entc',
+          'mech': 'mech',
+          'civil': 'civil',
+          'electrical': 'electrical'
         };
         
         const yearMap = {
@@ -231,7 +231,7 @@ export default function SubjectListPage() {
       {/* Fixed Header Container */}
       <div className="fixed top-0 left-0 right-0 z-50">
         {/* Header */}
-        <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50">
+        <header className="bg-white border-b border-gray-200 shadow-sm">
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               <Link to="/dashboard" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
@@ -325,7 +325,7 @@ export default function SubjectListPage() {
       </div>
 
       {/* Page Header */}
-      <div className="bg-white/80 backdrop-blur-sm pt-36">
+      <div className="bg-white pt-36">
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4">

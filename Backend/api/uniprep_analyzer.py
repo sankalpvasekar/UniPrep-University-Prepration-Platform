@@ -155,17 +155,21 @@ class UniPrepAnalyzer:
                 pass
 
             # Try to load AI models, but don't fail if unavailable
+            # DISABLED BY DEFAULT for faster startup - enable if needed for advanced AI features
             try:
-                print("-> Loading AI models...")
-                if SentenceTransformer is None or KeyBERT is None:
-                    raise RuntimeError("Transformer/KeyBERT not available")
-                self.models = {
-                    'sentence_model': SentenceTransformer('all-MiniLM-L6-v2'),
-                    'kw_model': KeyBERT()
-                }
-                print("[OK] AI models loaded.")
+                # Skip AI model loading for faster server startup
+                # Uncomment below to enable AI models (will slow down first request)
+                # print("-> Loading AI models...")
+                # if SentenceTransformer is None or KeyBERT is None:
+                #     raise RuntimeError("Transformer/KeyBERT not available")
+                # self.models = {
+                #     'sentence_model': SentenceTransformer('all-MiniLM-L6-v2'),
+                #     'kw_model': KeyBERT()
+                # }
+                # print("[OK] AI models loaded.")
+                raise RuntimeError("AI models disabled for faster startup")
             except Exception as me:
-                print(f"[WARN] AI models unavailable, running in light mode: {me}")
+                print(f"[INFO] Running in light mode (AI models disabled): {me}")
                 self.models = {}
                 self.light_mode = True
 
