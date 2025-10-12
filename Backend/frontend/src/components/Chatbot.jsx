@@ -1,9 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import { chatAPI } from "../utils/api";
 
 export default function Chatbot() {
-  const { subjectId } = useParams();
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([
     {
@@ -36,29 +33,48 @@ export default function Chatbot() {
     };
 
     setMessages(prev => [...prev, userMessage]);
-    const currentQuestion = question;
     setQuestion("");
     setIsLoading(true);
     setIsTyping(true);
 
     try {
-      // Call backend chatbot API
-      const response = await chatAPI.sendMessage(currentQuestion, subjectId);
-      
+      // Simulate API call delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: "You are a helpful study assistant for university students. Provide clear, educational responses and help with academic questions." },
+            { role: "user", content: question }
+          ],
+        }),
+      });
+
+      const data = await res.json();
+      const botResponse = data.choices?.[0]?.message?.content || "I'm sorry, I couldn't process your request. Please try again.";
+
+      // Simulate typing delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
       const botMessage = {
         id: Date.now() + 1,
         type: "bot",
-        content: response.answer || response.message || "I'm here to help!",
+        content: botResponse,
         timestamp: new Date()
       };
 
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
-      console.error('Chatbot error:', error);
       const errorMessage = {
         id: Date.now() + 1,
         type: "bot",
-        content: "I'm sorry, I'm having trouble connecting right now. Please try again later.",
+        content: "I'm sorry, I'm having trouble connecting right now. Please check your internet connection and try again.",
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);

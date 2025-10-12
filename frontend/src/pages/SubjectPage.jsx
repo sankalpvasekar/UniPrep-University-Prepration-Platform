@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { videos } from "../data/videos";
-import Chatbot from "../components/Chatbot";
+import Chatbot from "../components/ChatbotNew";
 
 export default function SubjectPage() {
   const { subjectId } = useParams();
@@ -157,10 +157,13 @@ export default function SubjectPage() {
     return () => { cancelled = true; };
   }, [subjectId, activeTab]);
 
+  // Filter videos based on current subject
+  const filteredVideos = videos.filter(video => video.subject === subjectId);
+
   const tabs = [
     { id: "questions", name: "Questions", icon: "❓", count: questions.easy.length + questions.medium.length + questions.hard.length },
     { id: "papers", name: "Past Papers", icon: "📄", count: pastPapers.length },
-    { id: "videos", name: "Videos & Notes", icon: "🎥", count: videos.length },
+    { id: "videos", name: "Videos & Notes", icon: "🎥", count: filteredVideos.length },
     { id: "concepts", name: "Topics", icon: "📘", count: concepts.length },
     { id: "chat", name: "AI Assistant", icon: "🤖", count: null }
   ];
@@ -200,7 +203,7 @@ export default function SubjectPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100">
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 sticky top-0 z-10">
+      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 fixed top-0 left-0 right-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4">
@@ -274,10 +277,16 @@ export default function SubjectPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-          {/* Questions Tab */}
-          {activeTab === "questions" && (
+      {activeTab === "chat" ? (
+        // Full-screen chatbot
+        <div className="fixed inset-0 pt-56 bg-white z-40 overflow-y-auto">
+          <Chatbot />
+        </div>
+      ) : (
+        <div className="max-w-7xl mx-auto px-6 py-8 pt-56">
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+            {/* Questions Tab */}
+            {activeTab === "questions" && (
             <div className="p-8">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">AI-Prioritized Questions</h2>
@@ -503,8 +512,19 @@ export default function SubjectPage() {
                 <h2 className="text-2xl font-bold text-gray-900">Video Lectures & Notes</h2>
               </div>
 
-              <div className="grid gap-6">
-                {videos.map((video, i) => (
+              {filteredVideos.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                    <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-medium text-gray-900 mb-2">No videos available</h3>
+                  <p className="text-gray-500">Videos for this subject will be added soon.</p>
+                </div>
+              ) : (
+                <div className="grid gap-6">
+                  {filteredVideos.map((video, i) => (
                   <div key={i} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-start space-x-4">
                       <div className="w-24 h-16 bg-gray-200 rounded-lg flex items-center justify-center relative overflow-hidden">
@@ -585,7 +605,8 @@ export default function SubjectPage() {
                     </div>
                   </div>
                 ))}
-              </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -633,17 +654,9 @@ export default function SubjectPage() {
             </div>
           )}
 
-          {/* Chat Tab */}
-          {activeTab === "chat" && (
-            <div className="p-8">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">AI Study Assistant</h2>
-              </div>
-              <Chatbot />
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

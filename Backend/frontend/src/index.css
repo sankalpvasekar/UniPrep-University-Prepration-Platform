@@ -203,27 +203,10 @@ html {
 }
 
 /* Global styles */
-html, body {
+body {
   @apply bg-gray-50 text-gray-800 font-sans antialiased;
   font-feature-settings: 'kern' 1;
   text-rendering: optimizeLegibility;
-  overflow-x: hidden;
-  width: 100%;
-  max-width: 100vw;
-}
-
-body {
-  position: relative;
-}
-
-/* Prevent horizontal scrolling on all elements */
-* {
-  max-width: 100%;
-}
-
-#root {
-  overflow-x: hidden;
-  width: 100%;
 }
 
 /* Selection styles */
