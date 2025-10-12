@@ -73,3 +73,6 @@ yarn-error.log*
 
 # Frontend folder inside Backend (separate frontend exists outside Backend)
 Backend/frontend/
+
+# Local MongoDB data (user-level mongod)
+Backend/.mongo-data/

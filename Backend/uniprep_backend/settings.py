@@ -69,16 +69,11 @@ WSGI_APPLICATION = 'uniprep_backend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'djongo',
+        'NAME': 'uniprep_db',
+        'HOST': 'localhost',
+        'PORT': 27017,
     }
-}
-
-# MongoDB connection (used alongside Django ORM)
-MONGODB_SETTINGS = {
-    'host': 'localhost',
-    'port': 27017,
-    'db_name': 'uniprep_db'
 }
 
 
