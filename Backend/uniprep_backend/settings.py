@@ -67,12 +67,20 @@ WSGI_APPLICATION = 'uniprep_backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+# MongoDB Configuration
+import pymongo
+from pymongo import MongoClient
+
+# MongoDB connection
+MONGODB_CLIENT = MongoClient('mongodb://localhost:27017/')
+MONGODB_DATABASE = MONGODB_CLIENT['uniprep_db']
+
+# For Django ORM compatibility, we'll use SQLite for Django's built-in models
+# and MongoDB for our custom models
 DATABASES = {
     'default': {
-        'ENGINE': 'djongo',
-        'NAME': 'uniprep_db',
-        'HOST': 'localhost',
-        'PORT': 27017,
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 

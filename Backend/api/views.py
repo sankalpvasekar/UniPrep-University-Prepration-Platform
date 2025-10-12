@@ -13,6 +13,7 @@ from .serializers import (
     UserProfileSerializer, RegisterSerializer, UserSerializer
 )
 from .ai_service import generate_ai_answer, test_gemini_connection
+from .mongodb_service import mongodb_service
 import numpy as np
 # Import analyzer with error handling
 try:
@@ -618,22 +619,24 @@ def ai_questions(request, subject_id):
     """
     try:
         if not ANALYZER_AVAILABLE:
-            # Fallback to database
+            # Fallback to MongoDB
             try:
-                subject = Subject.objects.get(id=subject_id)
-                questions_db = Question.objects.filter(subject=subject)
-                easy = [{'question': q.text, 'year': 2023, 'topic': 'General', 'marks': q.marks} 
-                       for q in questions_db.filter(difficulty='easy')]
-                medium = [{'question': q.text, 'year': 2023, 'topic': 'General', 'marks': q.marks} 
-                         for q in questions_db.filter(difficulty='medium')]
-                hard = [{'question': q.text, 'year': 2023, 'topic': 'General', 'marks': q.marks} 
-                       for q in questions_db.filter(difficulty='hard')]
+                # Get questions from MongoDB
+                questions_mongo = mongodb_service.get_questions_by_subject(subject_id)
+                
+                # Group by difficulty
+                easy = [{'question': q['text'], 'year': q.get('year', 2023), 'topic': q.get('topic', 'General'), 'marks': q.get('marks', 5)} 
+                       for q in questions_mongo if q.get('difficulty') == 'easy']
+                medium = [{'question': q['text'], 'year': q.get('year', 2023), 'topic': q.get('topic', 'General'), 'marks': q.get('marks', 5)} 
+                         for q in questions_mongo if q.get('difficulty') == 'medium']
+                hard = [{'question': q['text'], 'year': q.get('year', 2023), 'topic': q.get('topic', 'General'), 'marks': q.get('marks', 5)} 
+                       for q in questions_mongo if q.get('difficulty') == 'hard']
                 
                 return Response({
                     'easy': easy,
                     'medium': medium,
                     'hard': hard,
-                    'source': 'database'
+                    'source': 'mongodb'
                 })
             except Subject.DoesNotExist:
                 return Response({'error': 'Subject not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -644,22 +647,24 @@ def ai_questions(request, subject_id):
         subject_name = subject_id.replace('-', ' ').title()
         
         if not analyzer or not analyzer.is_ready:
-            # Fallback to database
+            # Fallback to MongoDB
             try:
-                subject = Subject.objects.get(id=subject_id)
-                questions_db = Question.objects.filter(subject=subject)
-                easy = [{'question': q.text, 'year': 2023, 'topic': 'General', 'marks': q.marks} 
-                       for q in questions_db.filter(difficulty='easy')]
-                medium = [{'question': q.text, 'year': 2023, 'topic': 'General', 'marks': q.marks} 
-                         for q in questions_db.filter(difficulty='medium')]
-                hard = [{'question': q.text, 'year': 2023, 'topic': 'General', 'marks': q.marks} 
-                       for q in questions_db.filter(difficulty='hard')]
+                # Get questions from MongoDB
+                questions_mongo = mongodb_service.get_questions_by_subject(subject_id)
+                
+                # Group by difficulty
+                easy = [{'question': q['text'], 'year': q.get('year', 2023), 'topic': q.get('topic', 'General'), 'marks': q.get('marks', 5)} 
+                       for q in questions_mongo if q.get('difficulty') == 'easy']
+                medium = [{'question': q['text'], 'year': q.get('year', 2023), 'topic': q.get('topic', 'General'), 'marks': q.get('marks', 5)} 
+                         for q in questions_mongo if q.get('difficulty') == 'medium']
+                hard = [{'question': q['text'], 'year': q.get('year', 2023), 'topic': q.get('topic', 'General'), 'marks': q.get('marks', 5)} 
+                       for q in questions_mongo if q.get('difficulty') == 'hard']
                 
                 return Response({
                     'easy': easy,
                     'medium': medium,
                     'hard': hard,
-                    'source': 'database'
+                    'source': 'mongodb'
                 })
             except Subject.DoesNotExist:
                 return Response({'error': 'Subject not found'}, status=status.HTTP_404_NOT_FOUND)

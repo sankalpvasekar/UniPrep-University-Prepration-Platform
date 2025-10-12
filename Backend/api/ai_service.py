@@ -81,6 +81,7 @@ def build_prompt(question, subject_context=None, difficulty=None, marks=None):
         "1. Reliability: TCP provides reliable delivery; UDP does not guarantee delivery.",
         "2. Connection Type: TCP is connection-oriented; UDP is connectionless.",
         "3. Ordering: TCP ensures order; UDP may deliver out of sequence.",
+        "(Continue similarly up to 8–10 points.)",
         "",
         "CONTENT RULES:",
         "Always start with a short introductory paragraph defining or summarizing the concept.",
@@ -139,25 +140,28 @@ def generate_fallback_answer(question, subject_context=None, difficulty=None, ma
     
     # Common academic topics and their explanations
     topic_responses = {
-        'binary search': """Binary search is a fundamental algorithm that efficiently locates a target value in a sorted array by repeatedly dividing the search space in half. This divide-and-conquer approach makes it one of the most efficient searching algorithms.
+        'binary search': """Binary Search is a fundamental divide-and-conquer algorithm that efficiently locates a target value in a sorted array by repeatedly dividing the search space in half. This approach makes it one of the most efficient searching algorithms with guaranteed logarithmic time complexity.
 
-1. Definition and Concept
-Binary search is a divide-and-conquer algorithm that efficiently finds a target value in a sorted array by repeatedly dividing the search space in half.
+1. Definition and Core Concept
+Binary search is a divide-and-conquer algorithm that efficiently finds a target value in a sorted array by repeatedly dividing the search space in half. It requires the input array to be pre-sorted for optimal performance.
 
 2. Working Principle
-Compare the target with the middle element. If equal, return the position. If target is smaller, search the left half. If target is larger, search the right half. Repeat until found or search space is exhausted.
+The algorithm compares the target with the middle element of the current search space. If equal, it returns the position. If the target is smaller, it searches the left half. If larger, it searches the right half. This process repeats until the target is found or the search space is exhausted.
 
 3. Time Complexity Analysis
-Best Case: O(1) - target found at middle position. Average Case: O(log n) - logarithmic time complexity. Worst Case: O(log n) - target at leaf level of decision tree.
+Best Case: O(1) - target found at middle position
+Average Case: O(log n) - logarithmic time complexity  
+Worst Case: O(log n) - target at leaf level of decision tree
 
 4. Space Complexity
-Iterative implementation: O(1) - constant extra space required. Recursive implementation: O(log n) - recursion stack space needed.
+Iterative implementation: O(1) - constant extra space required
+Recursive implementation: O(log n) - recursion stack space needed
 
 5. Key Advantages
-Extremely efficient for large datasets with guaranteed logarithmic time complexity. Works optimally with sorted data structures and provides predictable performance.
+Extremely efficient for large datasets with guaranteed logarithmic time complexity. Works optimally with sorted data structures and provides predictable performance characteristics.
 
 6. Common Applications
-Searching in databases and sorted arrays. Implementing efficient lookup tables and game development for finding optimal moves. Used in debugging and system optimization.
+Searching in databases and sorted arrays, implementing efficient lookup tables, game development for finding optimal moves, and debugging and system optimization.
 
 7. Implementation Example
 def binary_search(arr, target):
@@ -175,48 +179,79 @@ def binary_search(arr, target):
 8. Summary
 Binary search is essential for efficient data retrieval in sorted collections, offering logarithmic time complexity and making it ideal for large-scale applications where performance matters.""",
 
-        'data structure': """A data structure is a specialized format for organizing, storing, and accessing data in a computer so that it can be used efficiently. Understanding data structures is crucial for writing efficient algorithms and solving complex problems.
+        'data structure': """Data Structures are specialized formats for organizing, storing, and accessing data in a computer so that it can be used efficiently. Understanding data structures is crucial for writing efficient algorithms and solving complex problems in computer science.
 
 1. Definition and Purpose
-A data structure is a specialized format for organizing, storing, and accessing data in a computer so that it can be used efficiently.
+A data structure is a specialized format for organizing, storing, and accessing data in a computer so that it can be used efficiently. It defines the relationship between data elements and the operations that can be performed on them.
 
 2. Fundamental Types
-Linear structures include Arrays, Linked Lists, Stacks, and Queues. Non-linear structures include Trees, Graphs, and Hash Tables. Abstract structures include Sets, Maps, and Priority Queues.
+Linear structures: Arrays, Linked Lists, Stacks, and Queues
+Non-linear structures: Trees, Graphs, and Hash Tables  
+Abstract structures: Sets, Maps, and Priority Queues
 
 3. Key Characteristics
-Access Pattern determines how data is retrieved efficiently. Insertion and Deletion operations affect how data is modified. Memory Layout influences how data is stored in memory. Time Complexity defines performance characteristics.
+Access Pattern: Determines how data is retrieved efficiently
+Insertion and Deletion: Operations that affect how data is modified
+Memory Layout: Influences how data is stored in memory
+Time Complexity: Defines performance characteristics
 
 4. Selection Criteria
-Access Frequency determines how often data is read from the structure. Modification Pattern affects how often data changes occur. Memory Constraints consider available storage space. Performance Requirements balance speed versus memory trade-offs.
+Access Frequency: How often data is read from the structure
+Modification Pattern: How often data changes occur
+Memory Constraints: Available storage space considerations
+Performance Requirements: Balance between speed and memory trade-offs
 
 5. Common Operations
-Traversal involves visiting all elements systematically. Search operations find specific elements efficiently. Insertion adds new elements to the structure. Deletion removes elements from the structure. Sorting arranges elements in a specific order.
+Traversal: Visiting all elements systematically
+Search: Finding specific elements efficiently
+Insertion: Adding new elements to the structure
+Deletion: Removing elements from the structure
+Sorting: Arranging elements in a specific order
 
 6. Real-world Applications
-Databases use B-trees for efficient indexing. Operating Systems implement process scheduling queues. Web Development utilizes hash tables for caching. AI and Machine Learning employ graphs for neural networks.
+Databases: Use B-trees for efficient indexing
+Operating Systems: Implement process scheduling queues
+Web Development: Utilize hash tables for caching
+AI and Machine Learning: Employ graphs for neural networks
 
 7. Summary
 Choosing the right data structure is essential for optimal algorithm performance, making it a fundamental concept in computer science and software engineering.""",
 
-        'algorithm': """An algorithm is a step-by-step procedure or set of rules designed to solve a specific problem or perform a computation. Algorithms are the foundation of computer science and form the backbone of all software applications.
+        'algorithm': """Algorithms are step-by-step procedures or sets of rules designed to solve specific problems or perform computations. They are the foundation of computer science and form the backbone of all software applications, providing systematic approaches to problem-solving.
 
 1. Definition and Core Concept
-An algorithm is a step-by-step procedure or set of rules designed to solve a specific problem or perform a computation efficiently and correctly.
+An algorithm is a step-by-step procedure or set of rules designed to solve a specific problem or perform a computation efficiently and correctly. It provides a systematic approach to problem-solving with well-defined inputs and outputs.
 
 2. Essential Properties
-Input parameters must be clearly defined and specified. Output results should be expected and well-defined. Definiteness ensures each step is precisely defined. Finiteness guarantees the algorithm terminates in finite time. Effectiveness means each step is executable and practical.
+Input: Parameters must be clearly defined and specified
+Output: Results should be expected and well-defined
+Definiteness: Each step is precisely defined
+Finiteness: Algorithm terminates in finite time
+Effectiveness: Each step is executable and practical
 
 3. Algorithm Design Paradigms
-Divide and Conquer breaks problems into smaller subproblems. Dynamic Programming solves overlapping subproblems efficiently. Greedy Approach makes locally optimal choices at each step. Backtracking explores all possible solutions systematically.
+Divide and Conquer: Breaks problems into smaller subproblems
+Dynamic Programming: Solves overlapping subproblems efficiently
+Greedy Approach: Makes locally optimal choices at each step
+Backtracking: Explores all possible solutions systematically
 
 4. Complexity Analysis
-Time Complexity measures how runtime scales with input size. Space Complexity evaluates how memory usage scales. Big O Notation provides asymptotic analysis method. Best, Average, and Worst Case scenarios help understand performance variations.
+Time Complexity: Measures how runtime scales with input size
+Space Complexity: Evaluates how memory usage scales
+Big O Notation: Provides asymptotic analysis method
+Best, Average, and Worst Case: Help understand performance variations
 
 5. Algorithm Categories
-Sorting algorithms arrange data in specific order. Searching algorithms find specific elements efficiently. Graph algorithms handle pathfinding and traversal. Mathematical algorithms perform numerical computations.
+Sorting algorithms: Arrange data in specific order
+Searching algorithms: Find specific elements efficiently
+Graph algorithms: Handle pathfinding and traversal
+Mathematical algorithms: Perform numerical computations
 
 6. Design Principles
-Simplicity makes algorithms easy to understand and implement. Efficiency ensures optimal time and space usage. Correctness guarantees accurate results. Robustness handles edge cases gracefully and reliably.
+Simplicity: Makes algorithms easy to understand and implement
+Efficiency: Ensures optimal time and space usage
+Correctness: Guarantees accurate results
+Robustness: Handles edge cases gracefully and reliably
 
 7. Summary
 Algorithms are essential tools for problem-solving in computer science, requiring careful design, analysis, and optimization to achieve efficient and reliable solutions."""
