@@ -1,7 +1,7 @@
 # UniPrep - University Preparation Platform
 
 ## 🎥 YouTube Demo
-(Add YouTube video link here after upload)
+https://youtu.be/Mfnpp7aSS3Y
 
 ## Project Description
 A comprehensive full-stack platform for university exam preparation with AI integration, featuring a Django REST API backend and React frontend. It provides AI-based prediction of upcoming exam questions using past question papers, along with tools for subject management, study planning, and student progress tracking.
