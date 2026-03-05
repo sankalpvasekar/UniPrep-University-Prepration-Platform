@@ -291,18 +291,23 @@ class UniPrepAnalyzer:
 
         for group in subject_df['group_id'].unique():
             group_df = subject_df[subject_df['group_id'] == group]
-            years = sorted(group_df['Qyear'].unique())
-            pattern, p_multiplier = self._find_temporal_patterns(years)
-            
+            years_cluster = sorted(group_df['Qyear'].unique())
+            # Representative question
+            rep_qtext = group_df.iloc[0]['question_text']
+            # Variant-aware years within this subject/year filter
+            years_variant = self._variant_years(subject_df, rep_qtext)
+            years_used = years_variant if years_variant else years_cluster
+            pattern, p_multiplier = self._find_temporal_patterns(years_used)
+
             results.append({
-                'question': group_df.iloc[0]['question_text'],
+                'question': rep_qtext,
                 'topic': group_df.iloc[0]['topic'],
                 'base_priority': (len(group_df) / total_years_in_data) * 100,
                 'avg_marks': group_df['mark_weightage'].mean(),
-                'years_since_last': self.prediction_year - max(years),
+                'years_since_last': self.prediction_year - max(years_used),
                 'pattern': pattern,
                 'pattern_multiplier': p_multiplier,
-                'year': int(max(years))
+                'year': int(max(years_used))
             })
         
         # Calculate final scores
@@ -393,8 +398,8 @@ class UniPrepAnalyzer:
 
         for group in df['group_id'].unique():
             group_df = df[df['group_id'] == group]
-            years = sorted(group_df['Qyear'].unique())
-            pattern, p_multiplier = self._find_temporal_patterns(years)
+            # Cluster years (baseline)
+            years_cluster = sorted(group_df['Qyear'].unique())
 
             rf_score = 1.0
             if use_rf:
@@ -430,22 +435,28 @@ class UniPrepAnalyzer:
             question_type = self._infer_question_type(group_df.iloc[0]['question_text'])
             q_type_code = self._infer_question_type_code(group_df.iloc[0]['question_text'])
 
-            # Temporal TSP priority multiplier
-            tsp_score = self._predict_temporal_priority(years, float(group_df['mark_weightage'].mean()), q_type_code)
-            
+            # Representative question text and variant-aware years across the (subject, optional year) filtered df
+            rep_qtext = group_df.iloc[0]['question_text']
+            years_variant = self._variant_years(df, rep_qtext)
+            years_used = years_variant if years_variant else years_cluster
+
+            # Temporal TSP priority multiplier uses years_used
+            tsp_score = self._predict_temporal_priority(years_used, float(group_df['mark_weightage'].mean()), q_type_code)
+
             results.append({
-                'question': group_df.iloc[0]['question_text'],
+                'question': rep_qtext,
                 'topic': group_df.iloc[0]['topic'],
                 'question_type': question_type,
                 'base_priority': (len(group_df) / total_years_in_data) * 100,
                 'avg_marks': group_df['mark_weightage'].mean(),
-                'years_since_last': self.prediction_year - max(years),
-                'pattern': pattern,
-                'pattern_multiplier': p_multiplier,
+                'years_since_last': self.prediction_year - max(years_used),
+                'pattern': self._find_temporal_patterns(years_used)[0],
+                'pattern_multiplier': self._find_temporal_patterns(years_used)[1],
                 'rf_score': rf_score,
                 'tsp_score': tsp_score,
-                'years': years,
-                'year': int(max(years))
+                # Return exact-match years so UI shows dataset-accurate years only
+                'years': years_used,
+                'year': int(max(years_used))
             })
 
         analysis_df = pd.DataFrame(results)
@@ -557,6 +568,48 @@ class UniPrepAnalyzer:
         theory_score = sum(1 for kw in theory_keywords if kw in text_lower)
         
         return 'Numerical' if num_score > theory_score else 'Theory'
+
+    # ----- Variant-aware years helpers -----
+    def _normalize_text(self, text: str) -> str:
+        try:
+            return re.sub(r'[^a-z0-9]+', ' ', str(text).lower()).strip()
+        except Exception:
+            return str(text)
+
+    def _extract_keywords_for_years(self, text: str):
+        """Select stable keywords to match conceptual variants for years aggregation."""
+        try:
+            stop = {
+                'the','a','an','and','or','of','to','in','for','on','with','by','is','are',
+                'what','explain','describe','write','note','short','detail','brief','difference',
+                'model','define','give','show','vs','versus','about','between','using','tool','tools'
+            }
+            toks = re.findall(r"[a-z0-9']{3,}", self._normalize_text(text))
+            # Prefer longer tokens first
+            for min_len in (6, 5, 4):
+                sel = [t for t in toks if len(t) >= min_len and t not in stop]
+                if sel:
+                    return sel[:4]
+            return toks[:2]
+        except Exception:
+            return []
+
+    def _variant_years(self, df_subset: pd.DataFrame, rep_qtext: str):
+        """Compute variant-aware years for the representative question using keyword overlap."""
+        try:
+            kw = self._extract_keywords_for_years(rep_qtext)
+            if not isinstance(df_subset, pd.DataFrame) or df_subset.empty:
+                return []
+            norm_series = df_subset['question_text'].astype(str).map(self._normalize_text)
+            if kw:
+                mask = norm_series.apply(lambda s: all(k in s for k in kw))
+            else:
+                target = self._normalize_text(rep_qtext)
+                mask = (norm_series == target)
+            yrs = sorted(pd.to_numeric(df_subset[mask]['Qyear'], errors='coerce').dropna().astype(int).unique().tolist())
+            return yrs
+        except Exception:
+            return []
 
     def _rule_based_pattern_finder(self, years):
         """Rule-based pattern detection (Stage 1 of Temporal Analysis)."""

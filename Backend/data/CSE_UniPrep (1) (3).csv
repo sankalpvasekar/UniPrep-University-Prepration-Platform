@@ -8404,3 +8404,86 @@ u$. (Exact repeat of 2019 Q101)",2024,8
 8398,ELECTRICAL,Final Year,Drives & Control,"Explain slip power recovery.",2024,4
 8399,ELECTRICAL,Final Year,Drives & Control,"What is the purpose of a flywheel?",2024,4
 8400,ELECTRICAL,Final Year,Drives & Control,"What is vector control?",2024,4
+id,branch,year,subject,question_text,Qyear,mark_weightage
+8401,CSE,Final Year,Software Testing & Quality Assurance,"Write short note on Data Coverage.",2015,5
+8402,CSE,Final Year,Software Testing & Quality Assurance,"Write note on Testing Vs Debugging.",2015,5
+8403,CSE,Final Year,Software Testing & Quality Assurance,"Explain Big Bang and Sandwich Testing.",2015,5
+8404,CSE,Final Year,Software Testing & Quality Assurance,"Write note on Equivalence partitioning.",2015,5
+8405,CSE,Final Year,Software Testing & Quality Assurance,"What are the misconceptions about testing?",2015,5
+8406,CSE,Final Year,Software Testing & Quality Assurance,"Explain V and V model.",2015,5
+8407,CSE,Final Year,Software Testing & Quality Assurance,"What is proposal testing and requirement testing? Explain in detail.",2015,10
+8408,CSE,Final Year,Software Testing & Quality Assurance,"Write short notes on: Stress testing, Recovery testing, Regression testing, Acceptance testing.",2015,10
+8409,CSE,Final Year,Software Testing & Quality Assurance,"Explain Defect Life Cycle and Defect Management Process.",2015,10
+8410,CSE,Final Year,Software Testing & Quality Assurance,"Explain Random testing in automation.",2015,5
+8411,CSE,Final Year,Software Testing & Quality Assurance,"Explain McCall's Quality factors.",2015,5
+8412,CSE,Final Year,Software Testing & Quality Assurance,"Explain benefits of Automation testing.",2015,5
+8413,CSE,Final Year,Software Testing & Quality Assurance,"Why is it not possible to fix all the Bugs?",2015,5
+8414,CSE,Final Year,Software Testing & Quality Assurance,"Explain Targeted Quality factors.",2015,5
+8415,CSE,Final Year,Software Testing & Quality Assurance,"What is the reality of using an Automation tool?",2015,5
+8416,CSE,Final Year,Software Testing & Quality Assurance,"Explain Bug Life Cycle. On what criteria can we categorize bugs?",2015,10
+8417,CSE,Final Year,Software Testing & Quality Assurance,"Explain Software Quality Dilemma.",2015,10
+8418,CSE,Final Year,Software Testing & Quality Assurance,"Explain ISO 9000 and CMM Quality standard.",2015,10
+8419,CSE,Final Year,Software Testing & Quality Assurance,"Explain Test Planning in detail.",2017,4
+8420,CSE,Final Year,Software Testing & Quality Assurance,"What are the different skills required by a tester?",2017,4
+8421,CSE,Final Year,Software Testing & Quality Assurance,"Explain State Testing in brief.",2017,4
+8422,CSE,Final Year,Software Testing & Quality Assurance,"Explain Load Testing and Stress Testing with example.",2017,4
+8423,CSE,Final Year,Software Testing & Quality Assurance,"Explain Verification and Validation model (VV model).",2017,4
+8424,CSE,Final Year,Software Testing & Quality Assurance,"Explain Testing Process in detail.",2017,8
+8425,CSE,Final Year,Software Testing & Quality Assurance,"Explain White Box and Black Box testing techniques in detail.",2017,8
+8426,CSE,Final Year,Software Testing & Quality Assurance,"Write short notes on: Regression testing, Smoke testing, Ad-hoc testing, Installation testing.",2017,8
+8427,CSE,Final Year,Software Testing & Quality Assurance,"Explain Targeted Quality factors.",2017,4
+8428,CSE,Final Year,Software Testing & Quality Assurance,"Explain goals of Test Case Planning.",2017,4
+8429,CSE,Final Year,Software Testing & Quality Assurance,"Write note on six sigma standard.",2017,4
+8430,CSE,Final Year,Software Testing & Quality Assurance,"Explain elements of Software Quality Assurance.",2017,4
+8431,CSE,Final Year,Software Testing & Quality Assurance,"Explain Random testing in automation.",2017,4
+8432,CSE,Final Year,Software Testing & Quality Assurance,"Write note on Software Quality Assurance Tasks and Goals.",2017,8
+8433,CSE,Final Year,Software Testing & Quality Assurance,"Explain Test case planning in detail with diagram.",2017,8
+8434,CSE,Final Year,Software Testing & Quality Assurance,"Write note on testing tools.",2017,8
+8435,CSE,Final Year,Software Testing & Quality Assurance,"Explain concept of TQM in cost perspective.",2019,4
+8436,CSE,Final Year,Software Testing & Quality Assurance,"What are the challenges faced by a tester?",2019,4
+8437,CSE,Final Year,Software Testing & Quality Assurance,"Write short note on code coverage.",2019,4
+8438,CSE,Final Year,Software Testing & Quality Assurance,"Explain State Testing in brief.",2019,4
+8439,CSE,Final Year,Software Testing & Quality Assurance,"Explain Sandwich Testing.",2019,4
+8440,CSE,Final Year,Software Testing & Quality Assurance,"Explain Defect Management Process.",2019,8
+8441,CSE,Final Year,Software Testing & Quality Assurance,"Explain White Box and Black Box testing techniques in detail.",2019,8
+8442,CSE,Final Year,Software Testing & Quality Assurance,"Write a short note on Alpha, Beta and Gamma testing.",2019,8
+8443,CSE,Final Year,Software Testing & Quality Assurance,"Explain Goals of Test Case Planning.",2019,4
+8444,CSE,Final Year,Software Testing & Quality Assurance,"Explain Bug Life Cycle.",2019,4
+8445,CSE,Final Year,Software Testing & Quality Assurance,"Explain CMM Quality Standard.",2019,4
+8446,CSE,Final Year,Software Testing & Quality Assurance,"Explain elements of software Quality Assurance.",2019,4
+8447,CSE,Final Year,Software Testing & Quality Assurance,"Explain the Benefits of Automation and tools.",2019,4
+8448,CSE,Final Year,Software Testing & Quality Assurance,"Explain Test case planning in detail with diagram.",2019,8
+8449,CSE,Final Year,Software Testing & Quality Assurance,"Write note on software Quality Assurance Tasks and Goals.",2019,8
+8450,CSE,Final Year,Software Testing & Quality Assurance,"Explain the various testing tools of software testing.",2019,8
+8451,CSE,Final Year,Software Testing & Quality Assurance,"What is the defect life cycle in STLC?",2024,4
+8452,CSE,Final Year,Software Testing & Quality Assurance,"Explain the benefits of Beta and Gamma testing.",2024,4
+8453,CSE,Final Year,Software Testing & Quality Assurance,"What are the criteria used for requirement testing?",2024,4
+8454,CSE,Final Year,Software Testing & Quality Assurance,"What is Defect management Process?",2024,4
+8455,CSE,Final Year,Software Testing & Quality Assurance,"What is Sandwich testing and explain the advantages and disadvantages of Sandwich testing?",2024,4
+8456,CSE,Final Year,Software Testing & Quality Assurance,"Elaborate top-down approach for integration testing.",2024,6
+8457,CSE,Final Year,Software Testing & Quality Assurance,"Summarize the software development life cycle during testing.",2024,6
+8458,CSE,Final Year,Software Testing & Quality Assurance,"What is regression testing and stress testing with example?",2024,6
+8459,CSE,Final Year,Software Testing & Quality Assurance,"Explain CMM quality standards.",2024,4
+8460,CSE,Final Year,Software Testing & Quality Assurance,"Explain Software Quality Dilemma.",2024,4
+8461,CSE,Final Year,Software Testing & Quality Assurance,"What is automation test? Explain benefits of automation testing.",2024,4
+8462,CSE,Final Year,Software Testing & Quality Assurance,"What is the difference between QA, QC and Software Testing?",2024,4
+8463,CSE,Final Year,Software Testing & Quality Assurance,"Short Note on: Test Case Organization and Tracking.",2024,4
+8464,CSE,Final Year,Software Testing & Quality Assurance,"Briefly explain Selenium tool and its usage in functional testing of web applications.",2024,6
+8465,CSE,Final Year,Software Testing & Quality Assurance,"Describe SQA Processes and Product characteristics in SQA.",2024,6
+8466,CSE,Final Year,Software Testing & Quality Assurance,"Explain Random testing in automation.",2024,6
+8467,CSE,Final Year,Software Testing & Quality Assurance,"Explain Testing Process in detail.",2023,4
+8468,CSE,Final Year,Software Testing & Quality Assurance,"Compare the term mistake, error and defect in detail.",2023,4
+8469,CSE,Final Year,Software Testing & Quality Assurance,"Difference between Black Box Testing v/s White Box Testing.",2023,4
+8470,CSE,Final Year,Software Testing & Quality Assurance,"Write note on Equivalence partitioning.",2023,4
+8471,CSE,Final Year,Software Testing & Quality Assurance,"Explain the term Integration Testing in brief.",2023,4
+8472,CSE,Final Year,Software Testing & Quality Assurance,"Explain Defect Management Process.",2023,6
+8473,CSE,Final Year,Software Testing & Quality Assurance,"Explain Verification and Validation model.",2023,6
+8474,CSE,Final Year,Software Testing & Quality Assurance,"Explain Acceptance testing in detail.",2023,6
+8475,CSE,Final Year,Software Testing & Quality Assurance,"What are the four reasons for Test Case Planning?",2023,4
+8476,CSE,Final Year,Software Testing & Quality Assurance,"Why is it not possible to fix all the bugs?",2023,4
+8477,CSE,Final Year,Software Testing & Quality Assurance,"Explain the elements of Software Quality Assurance.",2023,4
+8478,CSE,Final Year,Software Testing & Quality Assurance,"Explain five views of quality.",2023,4
+8479,CSE,Final Year,Software Testing & Quality Assurance,"Explain Random Testing in automation.",2023,4
+8480,CSE,Final Year,Software Testing & Quality Assurance,"Explain Bugs Life Cycle with diagram.",2023,6
+8481,CSE,Final Year,Software Testing & Quality Assurance,"Explain ISO 9000 and CMM Quality standards.",2023,6
+8482,CSE,Final Year,Software Testing & Quality Assurance,"Explain in detail the Selenium testing tool.",2023,6

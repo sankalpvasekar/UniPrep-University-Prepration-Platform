@@ -75,12 +75,15 @@ from pymongo import MongoClient
 MONGODB_CLIENT = MongoClient('mongodb://localhost:27017/')
 MONGODB_DATABASE = MONGODB_CLIENT['uniprep_db']
 
-# For Django ORM compatibility, we'll use SQLite for Django's built-in models
-# and MongoDB for our custom models
+# Use MongoDB (djongo) for all Django models instead of SQLite
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'djongo',
+        'NAME': 'uniprep_db',
+        'ENFORCE_SCHEMA': False,
+        'CLIENT': {
+            'host': 'mongodb://localhost:27017/',
+        },
     }
 }
 

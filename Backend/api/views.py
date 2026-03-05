@@ -15,6 +15,7 @@ from .serializers import (
 from .ai_service import generate_ai_answer, test_gemini_connection
 from .mongodb_service import mongodb_service
 import numpy as np
+import re
 # Import analyzer with error handling
 try:
     from .uniprep_analyzer import get_analyzer, reload_analyzer
@@ -24,6 +25,12 @@ except ImportError as e:
     ANALYZER_AVAILABLE = False
     def get_analyzer():
         return None
+
+def slugify_subject(name: str) -> str:
+    """Create a URL-safe slug from a subject name (lowercase, dash-separated, no special chars)."""
+    s = re.sub(r"[^a-z0-9]+", "-", str(name).lower())
+    s = re.sub(r"-+", "-", s).strip("-")
+    return s
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -251,6 +258,16 @@ def dataset_subjects(request):
         
         branch_param = request.query_params.get('branch', None)
         year = request.query_params.get('year', None)
+        # Normalize year aliases from frontend routing to dataset labels
+        if year:
+            ykey = str(year).strip().lower()
+            year_alias = {
+                'fy': 'FY', 'first year': 'FY', 'first-year': 'FY', 'firstyear': 'FY',
+                'sy': 'SY', 'second year': 'SY', 'second-year': 'SY', 'secondyear': 'SY',
+                'ty': 'TY', 'third year': 'TY', 'third-year': 'TY', 'thirdyear': 'TY',
+                'final': 'Final Year', 'final year': 'Final Year', 'final-year': 'Final Year', 'finalyear': 'Final Year', 'final yr': 'Final Year'
+            }
+            year = year_alias.get(ykey, year)
         
         # Map frontend branch IDs to dataset branch codes
         branch_to_code = {
@@ -270,7 +287,7 @@ def dataset_subjects(request):
         subjects_data = []
         for idx, subject_name in enumerate(subjects):
             subjects_data.append({
-                'id': subject_name.lower().replace(' ', '-'),
+                'id': slugify_subject(subject_name),
                 'name': subject_name,
                 'description': f'Study materials for {subject_name}',
                 'icon': ['🌳', '⚙️', '🗄️', '🧮', '🌐', '🤖', '📚', '🔬', '💡', '🎯'][idx % 10],
@@ -445,6 +462,204 @@ def concepts(request, subject_id):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def dataset_paper_pdf(request, subject_id, qyear: int):
+    """Generate a simple PDF for a given subject (slug) and Qyear from the CSV dataset.
+    Optional query param: year=FY|SY|TY|Final Year to filter study year.
+    """
+    try:
+        if not ANALYZER_AVAILABLE:
+            return Response({'error': 'Analyzer not available'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        analyzer = get_analyzer()
+        if not analyzer or not analyzer.is_ready or analyzer.df is None or analyzer.df.empty:
+            return Response({'error': 'Dataset not ready'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        subject_name = subject_id.replace('-', ' ').title()
+        study_year = request.query_params.get('year')
+
+        # Filter rows
+        df = analyzer.df.copy()
+        df['subject_norm'] = df['subject'].astype(str).str.strip().str.lower()
+        df = df[df['subject_norm'] == subject_name.strip().lower()]
+        if study_year:
+            df['study_year_norm'] = df['study_year'].astype(str).str.strip()
+            df = df[df['study_year_norm'] == str(study_year).strip()]
+        try:
+            df['Qyear'] = pd.to_numeric(df['Qyear'], errors='coerce').astype('Int64')
+            df = df.dropna(subset=['Qyear'])
+        except Exception:
+            pass
+        df = df[df['Qyear'] == int(qyear)]
+
+        if df.empty:
+            return Response({'error': 'No questions found for requested paper'}, status=status.HTTP_404_NOT_FOUND)
+
+        questions = df[['question_text', 'mark_weightage']].dropna().to_dict('records')
+
+        # Try to generate PDF with reportlab
+        try:
+            from reportlab.lib.pagesizes import A4
+            from reportlab.pdfgen import canvas
+            from reportlab.lib.units import cm
+            from io import BytesIO
+
+            buffer = BytesIO()
+            c = canvas.Canvas(buffer, pagesize=A4)
+            width, height = A4
+
+            title = f"{subject_name} - {qyear}{f' ({study_year})' if study_year else ''}"
+            c.setFont("Helvetica-Bold", 14)
+            c.drawString(2*cm, height - 2*cm, title)
+            c.setFont("Helvetica", 10)
+            y = height - 3*cm
+            qnum = 1
+            for item in questions:
+                text = str(item.get('question_text', ''))
+                marks = int(pd.to_numeric(item.get('mark_weightage', 0), errors='coerce') or 0)
+                line = f"{qnum}. ({marks} marks) {text}"
+                # Wrap text roughly at 100 chars
+                import textwrap
+                wrapped = textwrap.wrap(line, width=95)
+                for w in wrapped:
+                    if y < 2*cm:
+                        c.showPage()
+                        c.setFont("Helvetica", 10)
+                        y = height - 2*cm
+                    c.drawString(2*cm, y, w)
+                    y -= 0.6*cm
+                y -= 0.2*cm
+                qnum += 1
+
+            c.showPage()
+            c.save()
+            pdf = buffer.getvalue()
+            buffer.close()
+
+            from django.http import HttpResponse
+            resp = HttpResponse(pdf, content_type='application/pdf')
+            filename = f"{subject_id}-{qyear}{f'-{study_year}' if study_year else ''}.pdf"
+            resp['Content-Disposition'] = f'inline; filename="{filename}"'
+            return resp
+        except Exception as e:
+            # Reportlab not installed or PDF generation failed
+            return Response({
+                'error': 'PDF generation unavailable. Install reportlab or check server logs.',
+                'detail': str(e),
+                'fallback': {
+                    'subject': subject_name,
+                    'qyear': qyear,
+                    'year': study_year,
+                    'questions': questions,
+                }
+            }, status=status.HTTP_501_NOT_IMPLEMENTED)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def dataset_past_papers_all(request):
+    """Build past papers (one per Qyear) for every subject from the CSV dataset.
+    Query params:
+      - branch: optional dataset branch code or frontend id
+      - year: optional study year filter (FY|SY|TY|Final Year)
+    Returns: { subjects: [ { subject, subject_id, papers: [...] } ] }
+    """
+    try:
+        if not ANALYZER_AVAILABLE:
+            return Response({'subjects': [], 'source': 'analyzer_not_available'})
+
+        analyzer = get_analyzer()
+        if not analyzer or not analyzer.is_ready or analyzer.df is None or analyzer.df.empty:
+            return Response({'subjects': [], 'source': 'dataset_not_ready'})
+
+        # Map optional branch id to dataset code
+        branch_param = request.query_params.get('branch')
+        year_filter = request.query_params.get('year')  # FY|SY|TY|Final Year
+        branch_to_code = {
+            'cse': 'CSE',
+            'mech': 'ME',
+            'entc': 'ENTC',
+            'civil': 'CIVIL',
+            'electrical': 'ELECTRICAL',
+        }
+        branch_code = branch_to_code.get(branch_param.lower() if branch_param else None, branch_param)
+
+        # Resolve subjects from dataset with optional filters
+        subjects = analyzer.get_subjects_from_csv(branch=branch_code, year=year_filter)
+        results = []
+
+        df = analyzer.df.copy()
+        # Pre-normalize columns used for filtering
+        df['subject_norm'] = df['subject'].astype(str).str.strip().str.lower()
+        df['study_year_norm'] = df['study_year'].astype(str).str.strip()
+        if branch_code:
+            df['branch_norm'] = df['branch'].astype(str).str.strip().str.upper()
+            df = df[df['branch_norm'] == str(branch_code).strip().upper()]
+
+        for subj in subjects:
+            sname = str(subj)
+            sdf = df[df['subject_norm'] == sname.strip().lower()]
+            if year_filter:
+                sdf = sdf[sdf['study_year_norm'] == str(year_filter).strip()]
+            if sdf.empty:
+                continue
+
+            # Group by Qyear using pure Python aggregation to avoid new imports
+            by_year = {}
+            for row in sdf.itertuples(index=False):
+                try:
+                    qy = int(getattr(row, 'Qyear'))
+                except Exception:
+                    # Skip rows with invalid year
+                    continue
+                qtext = str(getattr(row, 'question_text', '')).strip()
+                try:
+                    marks = float(getattr(row, 'mark_weightage', 0) or 0)
+                except Exception:
+                    marks = 0.0
+                if qy not in by_year:
+                    by_year[qy] = []
+                by_year[qy].append({'question_text': qtext, 'mark_weightage': marks})
+
+            papers = []
+            for qyear, items in by_year.items():
+                total_marks = int(sum((i.get('mark_weightage') or 0) for i in items))
+                avg_marks = (sum((i.get('mark_weightage') or 0) for i in items) / max(1, len(items))) if items else 0.0
+                if avg_marks <= 3:
+                    difficulty = 'Easy'
+                elif avg_marks <= 7:
+                    difficulty = 'Medium'
+                else:
+                    difficulty = 'Hard'
+
+                # Build paper object similar to dataset_past_papers
+                subject_id = sname.lower().replace(' ', '-')
+                questions = [{'question': i['question_text'], 'year': qyear, 'topic': None, 'marks': int(i.get('mark_weightage') or 0)} for i in items]
+                paper_obj = {
+                    'id': f"{subject_id}-{qyear}-{(year_filter or 'ALL').replace(' ', '').lower()}",
+                    'title': f"{sname} {qyear}{f' - {year_filter}' if year_filter else ''}",
+                    'description': f"Auto-generated from dataset: {len(questions)} questions",
+                    'duration': '3 hours',
+                    'totalMarks': total_marks,
+                    'difficulty': difficulty,
+                    'downloadCount': 0,
+                    'sections': [],
+                    'url': f"/api/dataset/papers/{subject_id}/{qyear}/pdf{f'?year={year_filter}' if year_filter else ''}",
+                    'qyear': int(qyear),
+                    'study_year': year_filter or None,
+                    'questions': questions,
+                }
+                papers.append(paper_obj)
+
+            papers = sorted(papers, key=lambda p: p['qyear'], reverse=True)
+            results.append({'subject': sname, 'subject_id': sname.lower().replace(' ', '-'), 'papers': papers})
+
+        return Response({'subjects': results, 'source': 'dataset'})
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -511,7 +726,7 @@ def dataset_past_papers(request, subject_id):
                 'difficulty': difficulty,
                 'downloadCount': 0,
                 'sections': common,
-                'url': '#',
+                'url': f"/api/dataset/papers/{subject_id}/{qyear}/pdf{f'?year={study_year}' if study_year else ''}",
                 'qyear': qyear,
                 'study_year': study_year or None,
                 'questions': questions,
@@ -643,8 +858,14 @@ def ai_questions(request, subject_id):
         
         analyzer = get_analyzer()
         
-        # Try to find subject in dataset by name
-        subject_name = subject_id.replace('-', ' ').title()
+        # Resolve slug back to exact subject name from dataset using the same slug function
+        # Fallback to title-cased hyphen replacement if not found
+        try:
+            all_subjects = analyzer.get_subjects_from_csv()
+        except Exception:
+            all_subjects = []
+        slug_map = {slugify_subject(s): s for s in all_subjects}
+        subject_name = slug_map.get(subject_id, subject_id.replace('-', ' ').title())
         
         if not analyzer or not analyzer.is_ready:
             # Fallback to MongoDB

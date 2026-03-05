@@ -1680,3 +1680,15 @@ id,branch,year,subject,question_text,Qyear,mark_weightage
 1678,CSE,Final Year,Distributed Systems,What is replication?,2024,4
 1679,CSE,Final Year,Distributed Systems,Explain the two-phase commit (2PC) protocol.,2024,8
 1680,CSE,Final Year,Distributed Systems,What is middleware?,2024,4
+
+
+8401,ELECTRICAL,FY,Basic Electrical Engg,"Define electric current and voltage.",2024,4
+8402,ELECTRICAL,FY,Basic Electrical Engg,"State Ohm's law and its limitations.",2024,6
+8403,ELECTRICAL,FY,Basic Electrical Engg,"Explain series and parallel circuits with examples.",2024,8
+8404,ELECTRICAL,FY,Basic Electrical Engg,"What is alternating current (AC)? How is it different from DC?",2024,6
+8405,ELECTRICAL,FY,Basic Electrical Engg,"Define power and energy with units and relations.",2024,4
+8406,ELECTRICAL,FY,Basic Electrical Engg,"Explain the function of a transformer.",2024,6
+8407,ELECTRICAL,FY,Basic Electrical Engg,"Describe Kirchhoff’s Current Law (KCL) and Voltage Law (KVL).",2024,6
+8408,ELECTRICAL,FY,Basic Electrical Engg,"What is a wattmeter? Explain its use.",2024,4
+8409,ELECTRICAL,FY,Basic Electrical Engg,"Define RMS and average value for AC waveform.",2024,4
+8410,ELECTRICAL,FY,Basic Electrical Engg,"Explain star and delta connections.",2024,6

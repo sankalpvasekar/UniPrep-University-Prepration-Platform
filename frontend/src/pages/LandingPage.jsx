@@ -153,16 +153,6 @@ export default function LandingPage() {
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Video Lectures</h3>
               <p className="text-gray-600">Watch expert video explanations to understand complex concepts easily.</p>
             </div>
-
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Progress Tracking</h3>
-              <p className="text-gray-600">Monitor your learning progress and identify areas for improvement.</p>
-            </div>
           </div>
         </div>
       </section>

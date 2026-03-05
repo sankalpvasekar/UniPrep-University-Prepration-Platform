@@ -79,3 +79,13 @@ class UserProfile(models.Model):
     
     def __str__(self):
         return f"{self.user.username} - {self.branch}"
+
+
+class DatasetUpload(models.Model):
+    """Virtual model to expose an 'Upload Dataset' entry in Django admin.
+    No database table is created (managed = False).
+    """
+    class Meta:
+        managed = False
+        verbose_name = "Upload Dataset"
+        verbose_name_plural = "Upload Dataset"

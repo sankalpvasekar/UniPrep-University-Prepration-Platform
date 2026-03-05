@@ -1,0 +1,27 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+<div class="content" id="content-main">
+  <h1>Upload Dataset CSV</h1>
+  <p>Append new rows into per-branch dataset files in <code>Backend/data/</code>.
+     Required columns: <code>branch, study_year, subject, mark_weightage, Qyear, question_text</code>.</p>
+
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    <fieldset class="module aligned">
+      <div class="form-row">
+        <label for="id_file"><strong>CSV file</strong>:</label>
+        <input type="file" name="file" accept=".csv" id="id_file" required />
+      </div>
+    </fieldset>
+    <div class="submit-row">
+      <input type="submit" value="Upload & Append" class="default" />
+    </div>
+  </form>
+
+  <p style="margin-top: 1rem;">
+    Tip: After upload, the analyzer is reloaded automatically. You can also call <code>/api/analyzer/reload/</code> if needed.
+  </p>
+</div>
+{% endblock %}

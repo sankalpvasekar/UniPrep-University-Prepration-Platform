@@ -90,8 +90,8 @@ export default function SubjectListPage() {
         const data = await response.json();
 
         if (data.subjects && data.subjects.length > 0) {
-          // Limit to 5 subjects and ensure a credits field for display
-          const enrichedSubjects = data.subjects.slice(0, 5).map((subject, idx) => ({
+          // Use full subject list and ensure a credits field for display
+          const enrichedSubjects = data.subjects.map((subject, idx) => ({
             ...subject,
             credits: subject.credits ?? [3, 4, 3, 4, 3][idx % 5],
           }));
