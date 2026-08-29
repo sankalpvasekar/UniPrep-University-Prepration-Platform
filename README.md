@@ -23,7 +23,7 @@ python -m venv venv
 venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py runserver
+python manage.py runserver 8080
 ```
 
 ### Frontend Setup
@@ -34,5 +34,5 @@ npm run dev
 ```
 
 ## Local Server
-- Backend: `http://localhost:8000/api/`
+- Backend: `http://localhost:8080/api/`
 - Frontend: `http://localhost:5173`
