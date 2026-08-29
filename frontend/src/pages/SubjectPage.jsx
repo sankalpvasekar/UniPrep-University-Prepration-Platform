@@ -36,7 +36,7 @@ export default function SubjectPage() {
     const fetchQuestions = async () => {
       try {
         setLoadingQuestions(true);
-        const url = new URL(`http://localhost:8000/api/ai-questions/${subjectId}/`);
+        const url = new URL(`http://localhost:8080/api/ai-questions/${subjectId}/`);
         if (studyYear) url.searchParams.set('year', studyYear);
         // Deterministic backend behavior for stable clustering/ranking
         url.searchParams.set('seed', '42');

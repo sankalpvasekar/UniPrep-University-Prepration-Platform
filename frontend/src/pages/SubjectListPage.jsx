@@ -86,7 +86,7 @@ export default function SubjectListPage() {
         const branch = branchMap[branchId] || 'CSE';
         const year = yearMap[yearId] || 'FY';
 
-        const response = await fetch(`http://localhost:8000/api/dataset/subjects/?branch=${branch}&year=${year}`);
+        const response = await fetch(`http://localhost:8080/api/dataset/subjects/?branch=${branch}&year=${year}`);
         const data = await response.json();
 
         if (data.subjects && data.subjects.length > 0) {

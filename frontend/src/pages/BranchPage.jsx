@@ -12,7 +12,7 @@ export default function BranchPage() {
     const fetchBranches = async () => {
       try {
         setLoading(true);
-        const res = await fetch("http://localhost:8000/api/dataset/branches/");
+        const res = await fetch("http://localhost:8080/api/dataset/branches/");
         const data = await res.json();
         if (cancelled) return;
         if (Array.isArray(data.branches) && data.branches.length > 0) {

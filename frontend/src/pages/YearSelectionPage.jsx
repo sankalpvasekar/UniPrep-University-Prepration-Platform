@@ -95,7 +95,7 @@ export default function YearSelectionPage() {
         setLoadingYears(true);
         const branchMap = { cse: 'cse', entc: 'entc', mech: 'mech', civil: 'civil', electrical: 'electrical' };
         const code = branchMap[branchId] || 'CSE';
-        const res = await fetch(`http://localhost:8000/api/dataset/years/?branch=${encodeURIComponent(code)}`);
+        const res = await fetch(`http://localhost:8080/api/dataset/years/?branch=${encodeURIComponent(code)}`);
         const data = await res.json();
         if (cancelled) return;
         const list = Array.isArray(data.years) ? data.years : [];

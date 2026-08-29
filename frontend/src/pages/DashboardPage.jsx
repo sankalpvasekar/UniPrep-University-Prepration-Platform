@@ -54,7 +54,7 @@ export default function DashboardPage() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
         
-        const res = await fetch("http://localhost:8000/api/dataset/branches/", {
+        const res = await fetch("http://localhost:8080/api/dataset/branches/", {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
